@@ -1,0 +1,35 @@
+from datetime import datetime
+
+from sqlalchemy import CheckConstraint
+
+from app import db
+
+
+class Emergencia(db.Model):
+    __tablename__ = "emergencias"
+
+    id_emergencia = db.Column(db.Integer, primary_key=True)
+    id_viaje = db.Column(db.Integer, db.ForeignKey("viajes.id_viaje"), nullable=False)
+    id_conductor = db.Column(
+        db.Integer, db.ForeignKey("conductores.id_conductor"), nullable=False
+    )
+    latitud = db.Column(db.Float, nullable=False)
+    longitud = db.Column(db.Float, nullable=False)
+    estado_envio_ws = db.Column(db.String(20), nullable=False, default="pendiente")
+    estado_envio_sms = db.Column(db.String(20), nullable=False, default="pendiente")
+    enviado_offline = db.Column(db.Boolean, nullable=False, default=False)
+    activada_en = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    viaje = db.relationship("Viaje", backref=db.backref("emergencias", lazy=True))
+    conductor = db.relationship("Conductor", backref=db.backref("emergencias", lazy=True))
+
+    __table_args__ = (
+        CheckConstraint(
+            "estado_envio_ws IN ('pendiente', 'enviado', 'fallido')",
+            name="ck_emergencias_estado_envio_ws",
+        ),
+        CheckConstraint(
+            "estado_envio_sms IN ('pendiente', 'enviado', 'fallido')",
+            name="ck_emergencias_estado_envio_sms",
+        ),
+    )
