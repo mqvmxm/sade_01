@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block title %}Conductores — S.A.D.E.{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Conductores</h1>
+    <a href="{{ url_for('admin.conductores_nuevo') }}" class="btn btn-primary">
+        + Nuevo conductor
+    </a>
+</div>
+
+{% if conductores %}
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Teléfono</th>
+                <th>No. licencia</th>
+                <th>Vencimiento</th>
+                <th>Licencia</th>
+                <th class="text-end">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for conductor in conductores %}
+            <tr>
+                <td>{{ conductor.nombre }}</td>
+                <td>{{ conductor.telefono }}</td>
+                <td>{{ conductor.num_licencia }}</td>
+                <td>{{ conductor.fecha_vencimiento_lic.strftime('%d/%m/%Y') }}</td>
+                <td>
+                    {% if conductor.licencia_vigente() %}
+                        <span class="badge bg-success">Vigente</span>
+                    {% else %}
+                        <span class="badge bg-danger">Vencida</span>
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    <a
+                        href="{{ url_for('admin.conductores_editar', id_conductor=conductor.id_conductor) }}"
+                        class="btn btn-sm btn-outline-secondary"
+                    >
+                        Editar
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No hay conductores registrados todavía.</p>
+{% endif %}
+{% endblock %}

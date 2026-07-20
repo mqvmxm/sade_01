@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% set c = conductor or {} %}
+{% set es_edicion = id_conductor is not none %}
+
+{% block title %}{{ 'Editar conductor' if es_edicion else 'Nuevo conductor' }} — S.A.D.E.{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <h1 class="mb-4">{{ 'Editar conductor' if es_edicion else 'Nuevo conductor' }}</h1>
+
+        <form
+            method="POST"
+            action="{{ url_for('admin.conductores_editar', id_conductor=id_conductor) if es_edicion else url_for('admin.conductores_nuevo') }}"
+        >
+            <div class="mb-3">
+                <label for="nombre" class="form-label">Nombre</label>
+                <input
+                    type="text"
+                    class="form-control"
+                    id="nombre"
+                    name="nombre"
+                    value="{{ c.nombre }}"
+                    required
+                >
+            </div>
+            <div class="mb-3">
+                <label for="telefono" class="form-label">Teléfono</label>
+                <input
+                    type="tel"
+                    class="form-control"
+                    id="telefono"
+                    name="telefono"
+                    value="{{ c.telefono }}"
+                    required
+                >
+            </div>
+            <div class="mb-3">
+                <label for="num_licencia" class="form-label">No. de licencia</label>
+                <input
+                    type="text"
+                    class="form-control"
+                    id="num_licencia"
+                    name="num_licencia"
+                    value="{{ c.num_licencia }}"
+                    required
+                >
+            </div>
+            <div class="mb-3">
+                <label for="fecha_vencimiento_lic" class="form-label">Fecha de vencimiento de licencia</label>
+                <input
+                    type="date"
+                    class="form-control"
+                    id="fecha_vencimiento_lic"
+                    name="fecha_vencimiento_lic"
+                    value="{{ c.fecha_vencimiento_lic }}"
+                    required
+                >
+            </div>
+            <div class="mb-3">
+                <label for="contacto_emergencia" class="form-label">Contacto de emergencia</label>
+                <input
+                    type="text"
+                    class="form-control"
+                    id="contacto_emergencia"
+                    name="contacto_emergencia"
+                    value="{{ c.contacto_emergencia }}"
+                    required
+                >
+            </div>
+            <div class="mb-3">
+                <label for="tel_emergencia" class="form-label">Teléfono de emergencia</label>
+                <input
+                    type="tel"
+                    class="form-control"
+                    id="tel_emergencia"
+                    name="tel_emergencia"
+                    value="{{ c.tel_emergencia }}"
+                    required
+                >
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    {{ 'Guardar cambios' if es_edicion else 'Registrar conductor' }}
+                </button>
+                <a href="{{ url_for('admin.conductores_lista') }}" class="btn btn-outline-secondary">
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
