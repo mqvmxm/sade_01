@@ -1,3 +1,6 @@
+# Blueprint del rol conductor. Pensado para alojar a futuro el check-in
+# de viajes (RF-3) y el botón de pánico (RF-4).
+
 from flask import Blueprint, flash, redirect, render_template, url_for
 from flask_login import current_user, login_required
 
@@ -7,6 +10,7 @@ conductor = Blueprint("conductor", __name__)
 @conductor.route("/dashboard")
 @login_required
 def dashboard():
+    """Muestra el panel de conductor, verificando el rol en backend (RF-1.3)."""
     if not current_user.es_conductor():
         flash("No tienes permiso para acceder a esa sección", "error")
         return redirect(url_for("auth.login"))

@@ -1,3 +1,7 @@
+# Modelo de alertas generadas por el motor asíncrono de monitoreo
+# (RF-3.4: chequeo periódico con APScheduler cada 60s; RF-3.5: alerta
+# automática ante retraso, pánico o licencia vencida).
+
 from datetime import datetime
 
 from sqlalchemy import CheckConstraint
@@ -6,6 +10,12 @@ from app import db
 
 
 class Alerta(db.Model):
+    """Aviso ligado a un viaje/conductor con tipo, prioridad (1-3) y estado de atención.
+
+    Generada automáticamente por el motor asíncrono (RF-3.4/RF-3.5) al
+    detectar retraso, pánico o licencia vencida.
+    """
+
     __tablename__ = "alertas"
 
     id_alerta = db.Column(db.Integer, primary_key=True)

@@ -1,9 +1,20 @@
+# Modelo de bitácora de auditoría: no corresponde a ningún RF específico
+# del documento de requisitos; se agregó como buena práctica de diseño de
+# BD, ligada a RNF-02 (Seguridad) y RNF-07 (Mantenibilidad).
+
 from datetime import datetime
 
 from app import db
 
 
 class Bitacora(db.Model):
+    """Registro genérico de auditoría de acciones sobre el sistema.
+
+    Cada fila referencia la tabla y el registro afectado
+    (tabla_afectada + registro_id) en lugar de una FK específica, para
+    poder trazar cambios sobre cualquier entidad desde un solo lugar.
+    """
+
     __tablename__ = "bitacora"
 
     id_bitacora = db.Column(db.Integer, primary_key=True)

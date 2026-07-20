@@ -1,3 +1,7 @@
+# Carga la configuración de la aplicación desde variables de entorno (.env):
+# credenciales de base de datos, clave de sesión de Flask y credenciales de
+# Twilio usadas por el módulo de emergencias (RF-4).
+
 import os
 
 from dotenv import load_dotenv
@@ -6,6 +10,12 @@ load_dotenv()
 
 
 class Config:
+    """Contenedor de configuración de Flask poblado desde variables de entorno.
+
+    Cada valor tiene un default de desarrollo para que la app arranque sin
+    un .env presente, pero en producción debe sobreescribirse vía entorno.
+    """
+
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key")
 
     DB_USER = os.environ.get("DB_USER", "postgres")

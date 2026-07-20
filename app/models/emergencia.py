@@ -1,3 +1,7 @@
+# Modelo de emergencias activadas por el conductor (RF-4: Emergencias).
+# Registra la ubicación GPS y el estado de envío por cada canal de
+# notificación (WhatsApp vía Twilio y SMS de respaldo).
+
 from datetime import datetime
 
 from sqlalchemy import CheckConstraint
@@ -6,6 +10,14 @@ from app import db
 
 
 class Emergencia(db.Model):
+    """Evento de pánico disparado desde un viaje (RF-4.1: botón de pánico).
+
+    Guarda las coordenadas GPS capturadas (RF-4.2), el timestamp
+    (RF-4.6) y el estado de envío independiente para WhatsApp (RF-4.3)
+    y SMS de respaldo (RF-4.4). `enviado_offline` marca los casos en los
+    que la emergencia se registró sin conectividad inmediata.
+    """
+
     __tablename__ = "emergencias"
 
     id_emergencia = db.Column(db.Integer, primary_key=True)

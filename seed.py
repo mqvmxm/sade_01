@@ -1,3 +1,8 @@
+# Script de datos semilla: crea un usuario de cada rol (admin, conductor,
+# mecánico) y un Conductor de ejemplo para poder probar RF-1 (login con
+# los 3 roles) sin tener que registrar cuentas manualmente. Es idempotente:
+# si el usuario o conductor ya existen, los omite en vez de duplicarlos.
+
 from datetime import date
 
 from app import create_app, db
@@ -8,6 +13,7 @@ app = create_app()
 
 
 def crear_usuario(nombre, nombre_usuario, password, rol, id_conductor=None):
+    """Crea un Usuario con contraseña hasheada si no existe uno con ese nombre_usuario."""
     if Usuario.query.filter_by(nombre_usuario=nombre_usuario).first():
         print(f"Usuario '{nombre_usuario}' ya existe, se omite.")
         return

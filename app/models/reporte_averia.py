@@ -1,3 +1,6 @@
+# Modelo de reportes de avería registrados por el mecánico sobre un
+# vehículo/viaje (RF-5: Estado vehicular).
+
 from datetime import datetime
 
 from sqlalchemy import CheckConstraint
@@ -6,6 +9,12 @@ from app import db
 
 
 class ReporteAveria(db.Model):
+    """Reporte de avería de un vehículo, vinculado al viaje en curso (RF-5.3).
+
+    `estado_vehiculo_prev` conserva el estado del vehículo justo antes
+    del reporte, útil para auditoría del cambio a 'en_taller' (RF-5.2).
+    """
+
     __tablename__ = "reportes_averia"
 
     id_reporte = db.Column(db.Integer, primary_key=True)

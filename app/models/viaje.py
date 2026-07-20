@@ -1,3 +1,7 @@
+# Modelo central de monitoreo de rutas: un viaje une un conductor con un
+# vehículo entre un origen y un destino, con ETA y seguimiento de estado
+# (RF-3: Monitoreo de rutas).
+
 from datetime import datetime
 
 from sqlalchemy import CheckConstraint
@@ -6,6 +10,14 @@ from app import db
 
 
 class Viaje(db.Model):
+    """Trayecto activo o histórico de un conductor con un vehículo (RF-3.1).
+
+    hora_salida se registra al hacer check-in (RF-3.2) y hora_llegada al
+    confirmar arribo (RF-3.3). El estado transiciona de 'activo' a
+    'completado', o a 'alerta'/'emergencia' cuando el motor asíncrono
+    (RF-3.4) detecta un retraso (RF-3.5) o se activa el botón de pánico.
+    """
+
     __tablename__ = "viajes"
 
     id_viaje = db.Column(db.Integer, primary_key=True)
@@ -31,8 +43,9 @@ class Viaje(db.Model):
             "estado IN ('activo', 'completado', 'alerta', 'emergencia', 'cerrado_admin')",
             name="ck_viajes_estado",
         ),
-        # NOTA: la BD ya tiene un índice único parcial (idx_viaje_activo_unico)
-        # que impide dos viajes 'activo' para el mismo id_vehiculo simultáneamente.
-        # No se replica aquí en SQLAlchemy: la validación previa al INSERT se
-        # hace en el controller (app/controllers/conductor.py, check-in).
+        # NOTA (RF-3.6, regla de integridad): la BD ya tiene un índice único
+        # parcial (idx_viaje_activo_unico) que impide dos viajes 'activo' para
+        # el mismo id_vehiculo simultáneamente (evita doble check-in del mismo
+        # vehículo). No se replica aquí en SQLAlchemy: la validación previa al
+        # INSERT se hace en el controller (app/controllers/conductor.py, check-in).
     )

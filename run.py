@@ -1,3 +1,7 @@
+# Script de arranque de S.A.D.E.: crea la app, asegura que existan las
+# tablas de BD (no aplica migraciones sobre tablas ya existentes) y
+# levanta el servidor de desarrollo de Flask.
+
 from app import create_app, db
 
 app = create_app()
