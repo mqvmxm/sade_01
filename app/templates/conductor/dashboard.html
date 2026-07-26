@@ -5,7 +5,10 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
-        <p class="page-title mb-1">Hola, {{ current_user.nombre }}</p>
+        <div class="d-flex justify-content-between align-items-start mb-1">
+            <p class="page-title mb-0">Hola, {{ current_user.nombre }}</p>
+            <a href="{{ url_for('auth.logout') }}" class="logout-link">Cerrar sesión →</a>
+        </div>
         <p class="text-help mb-4">Panel de conductor</p>
 
         {% if not conductor.licencia_vigente() %}
