@@ -34,3 +34,17 @@ class Config:
     TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", "")
     TWILIO_WHATSAPP_FROM = os.environ.get("TWILIO_WHATSAPP_FROM", "")
     TWILIO_SMS_FROM = os.environ.get("TWILIO_SMS_FROM", "")
+
+    # Número del administrador que recibe copia de cada notificación de
+    # emergencia (RF-4.3/4.4). No vive en la tabla usuarios: el esquema de
+    # BD ya fue aprobado y cerrado, así que este dato queda solo en config.
+    ADMIN_PHONE_NUMBER = os.environ.get("ADMIN_PHONE_NUMBER", "")
+
+    # Con SIMULATE_TWILIO=True (default), app/services/notificaciones.py no
+    # llama a la API real de Twilio: solo simula el envío por consola. Poner
+    # en False para usar credenciales reales.
+    SIMULATE_TWILIO = os.environ.get("SIMULATE_TWILIO", "True").strip().lower() in (
+        "true",
+        "1",
+        "yes",
+    )
