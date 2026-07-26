@@ -43,8 +43,9 @@ def dashboard():
         flash("Tu cuenta no tiene un perfil de conductor asociado.", "error")
         return redirect(url_for("auth.login"))
 
-    viaje_activo = Viaje.query.filter_by(
-        id_conductor=perfil.id_conductor, estado="activo"
+    viaje_activo = Viaje.query.filter(
+        Viaje.id_conductor == perfil.id_conductor,
+        Viaje.estado.in_(["activo", "alerta"]),
     ).first()
 
     return render_template(
@@ -70,6 +71,17 @@ def viajes_nuevo():
     # Nunca confiar solo en el frontend: se revalida la licencia (RF-6.2).
     if not perfil.licencia_vigente():
         flash("No puedes iniciar un viaje: tu licencia está vencida.", "error")
+        return redirect(url_for("conductor.dashboard"))
+
+    # Un conductor no puede tener dos viajes sin cerrar a la vez: bloquea el
+    # check-in si ya tiene uno en 'activo' o 'alerta' (evita duplicados como
+    # el que dejó un viaje viejo sin confirmar llegada).
+    viaje_sin_cerrar = Viaje.query.filter(
+        Viaje.id_conductor == perfil.id_conductor,
+        Viaje.estado.in_(["activo", "alerta"]),
+    ).first()
+    if viaje_sin_cerrar is not None:
+        flash("Ya tienes un viaje sin cerrar. Confirma la llegada antes de iniciar uno nuevo.", "error")
         return redirect(url_for("conductor.dashboard"))
 
     origen = request.form.get("origen", "").strip()
@@ -128,7 +140,7 @@ def viajes_nuevo():
 @conductor.route("/viajes/<int:id_viaje>/confirmar-llegada", methods=["POST"])
 @conductor_required
 def viajes_confirmar_llegada(id_viaje):
-    """Cierra un viaje activo al confirmar la llegada del conductor (RF-3.3)."""
+    """Cierra un viaje 'activo' o 'alerta' al confirmar la llegada del conductor (RF-3.3)."""
     perfil = current_user.conductor
     viaje = Viaje.query.get_or_404(id_viaje)
 
@@ -136,8 +148,8 @@ def viajes_confirmar_llegada(id_viaje):
         flash("No tienes permiso para modificar ese viaje.", "error")
         return redirect(url_for("conductor.dashboard"))
 
-    if viaje.estado != "activo":
-        flash("Ese viaje ya no está activo.", "error")
+    if viaje.estado not in ("activo", "alerta"):
+        flash("Ese viaje ya no está en curso.", "error")
         return redirect(url_for("conductor.dashboard"))
 
     viaje.hora_llegada = datetime.now()
