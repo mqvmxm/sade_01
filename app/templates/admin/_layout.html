@@ -40,6 +40,18 @@
             >
                 Alertas
             </a>
+            <a
+                class="admin-nav-link {{ 'active' if self.active_page() == 'reportes_averia' }}"
+                href="{{ url_for('admin.reportes_averia_lista') }}"
+            >
+                Reportes de avería
+            </a>
+            <a
+                class="admin-nav-link {{ 'active' if self.active_page() == 'historial' }}"
+                href="{{ url_for('admin.historial') }}"
+            >
+                Historial
+            </a>
         </nav>
 
         <div class="admin-sidebar-footer">

@@ -2,12 +2,34 @@
 
 {% block title %}Panel de conductor — S.A.D.E.{% endblock %}
 
+{% block theme_init %}
+<script>
+    (function () {
+        var tema = localStorage.getItem('sade_tema_conductor') || 'claro';
+        if (tema === 'oscuro') {
+            document.documentElement.setAttribute('data-tema', 'oscuro');
+        }
+    })();
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
         <div class="d-flex justify-content-between align-items-start mb-1">
             <p class="page-title mb-0">Hola, {{ current_user.nombre }}</p>
-            <a href="{{ url_for('auth.logout') }}" class="logout-link">Cerrar sesión →</a>
+            <div class="d-flex align-items-center gap-2">
+                <button
+                    type="button"
+                    id="boton-tema"
+                    class="theme-toggle"
+                    title="Cambiar tema claro/oscuro"
+                    aria-label="Cambiar tema claro/oscuro"
+                >
+                    <span id="icono-tema">🌙</span>
+                </button>
+                <a href="{{ url_for('auth.logout') }}" class="logout-link">Cerrar sesión →</a>
+            </div>
         </div>
         <p class="text-help mb-4">Panel de conductor</p>
 
@@ -22,7 +44,14 @@
 
         {% elif viaje_activo %}
             <div class="card p-4">
-                <p class="section-subtitle mb-3">Viaje en curso</p>
+                {% if viaje_activo.estado == 'emergencia' %}
+                    <span class="badge-status danger mb-3" style="width: fit-content;">Aviso de emergencia activado</span>
+                    <p class="mb-3">
+                        Se envió un aviso de emergencia con tu ubicación. Confirma tu llegada cuando estés a salvo.
+                    </p>
+                {% else %}
+                    <p class="section-subtitle mb-3">Viaje en curso</p>
+                {% endif %}
                 <dl class="row mb-4">
                     <dt class="col-4 text-help">Origen</dt>
                     <dd class="col-8">{{ viaje_activo.origen }}</dd>
@@ -173,4 +202,31 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+    (function () {
+        var CLAVE_TEMA = 'sade_tema_conductor';
+        var boton = document.getElementById('boton-tema');
+        var icono = document.getElementById('icono-tema');
+
+        function actualizarIcono() {
+            var oscuro = document.documentElement.getAttribute('data-tema') === 'oscuro';
+            icono.textContent = oscuro ? '☀️' : '🌙';
+        }
+
+        actualizarIcono();
+
+        boton.addEventListener('click', function () {
+            var oscuroActivo = document.documentElement.getAttribute('data-tema') === 'oscuro';
+            if (oscuroActivo) {
+                document.documentElement.removeAttribute('data-tema');
+                localStorage.setItem(CLAVE_TEMA, 'claro');
+            } else {
+                document.documentElement.setAttribute('data-tema', 'oscuro');
+                localStorage.setItem(CLAVE_TEMA, 'oscuro');
+            }
+            actualizarIcono();
+        });
+    })();
+</script>
 {% endblock %}

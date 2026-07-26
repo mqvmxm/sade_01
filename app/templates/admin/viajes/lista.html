@@ -19,6 +19,7 @@
                 <th>Salida</th>
                 <th>ETA</th>
                 <th>Estado</th>
+                <th class="text-end">Acciones</th>
             </tr>
         </thead>
         <tbody>
@@ -37,6 +38,30 @@
                         <span class="badge-status warning">En alerta</span>
                     {% else %}
                         <span class="badge-status success">Activo</span>
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    {% if viaje.estado in ('activo', 'alerta', 'emergencia') %}
+                        <form
+                            method="POST"
+                            action="{{ url_for('admin.viajes_confirmar_llegada_manual', id_viaje=viaje.id_viaje) }}"
+                            class="d-inline"
+                            onsubmit="return confirm('¿Confirmar la llegada de este viaje manualmente? Esta acción no se puede deshacer.');"
+                        >
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                Confirmar llegada (manual)
+                            </button>
+                        </form>
+                        <form
+                            method="POST"
+                            action="{{ url_for('admin.viajes_cerrar_forzado', id_viaje=viaje.id_viaje) }}"
+                            class="d-inline"
+                            onsubmit="return confirm('¿Cerrar este viaje de forma forzada? Úsalo solo si no se puede resolver de otra forma. Esta acción no se puede deshacer.');"
+                        >
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                Cerrar viaje (forzado)
+                            </button>
+                        </form>
                     {% endif %}
                 </td>
             </tr>

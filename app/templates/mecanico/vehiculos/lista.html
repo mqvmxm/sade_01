@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block title %}Vehículos — S.A.D.E.{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-1">
+    <p class="page-title mb-0">Vehículos</p>
+    <a href="{{ url_for('auth.logout') }}" class="logout-link">Cerrar sesión →</a>
+</div>
+<p class="text-help mb-4">
+    <a href="{{ url_for('mecanico.dashboard') }}">Inicio</a> · Panel de mecánico
+</p>
+
+{% if vehiculos %}
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Placas</th>
+                <th>Unidad</th>
+                <th>Marca / Modelo</th>
+                <th>Estado</th>
+                <th class="text-end">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for vehiculo in vehiculos %}
+            <tr>
+                <td>{{ vehiculo.placas }}</td>
+                <td>{{ vehiculo.num_unidad }}</td>
+                <td>{{ vehiculo.marca }} {{ vehiculo.modelo }}</td>
+                <td>
+                    {% if vehiculo.estado == 'disponible' %}
+                        <span class="badge-status success">Disponible</span>
+                    {% elif vehiculo.estado == 'en_taller' %}
+                        <span class="badge-status warning">En taller</span>
+                    {% elif vehiculo.estado == 'en_ruta' %}
+                        <span class="badge-status neutral">En ruta</span>
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    {% if vehiculo.estado != 'en_ruta' %}
+                        <form
+                            method="POST"
+                            action="{{ url_for('mecanico.vehiculos_cambiar_estado', id_vehiculo=vehiculo.id_vehiculo) }}"
+                            class="d-inline-flex align-items-center gap-1"
+                        >
+                            <input
+                                type="text"
+                                name="motivo"
+                                class="form-control form-control-sm"
+                                style="width: 160px;"
+                                placeholder="Motivo (opcional)"
+                            >
+                            {% if vehiculo.estado == 'disponible' %}
+                                <input type="hidden" name="estado" value="en_taller">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                    Marcar en taller
+                                </button>
+                            {% else %}
+                                <input type="hidden" name="estado" value="disponible">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                    Marcar disponible
+                                </button>
+                            {% endif %}
+                        </form>
+                    {% endif %}
+
+                    {% if vehiculo.id_vehiculo in vehiculos_con_viaje_activo %}
+                        <a
+                            href="{{ url_for('mecanico.vehiculos_reportar_averia', id_vehiculo=vehiculo.id_vehiculo) }}"
+                            class="btn btn-sm btn-primary"
+                        >
+                            Reportar avería
+                        </a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No hay vehículos registrados todavía.</p>
+{% endif %}
+{% endblock %}

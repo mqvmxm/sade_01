@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="utf-8">
+    {% block theme_init %}{% endblock %}
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}S.A.D.E.{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,6 +26,35 @@
             --color-neutral: #808387;
             --color-text: #1C1C21;
             --color-text-secondary: #6B6D74;
+            --color-card-bg: #fff;
+            --color-card-border: #E4E4E1;
+            --color-input-bg: #fff;
+            --color-success-bg: rgba(42, 140, 97, 0.12);
+            --color-warning-bg: rgba(184, 136, 23, 0.14);
+            --color-danger-bg: rgba(191, 61, 61, 0.12);
+            --color-neutral-bg: rgba(128, 131, 135, 0.14);
+        }
+
+        /* Modo oscuro manual del conductor (RF de tema claro/oscuro): mismas
+           variables, valores distintos. Solo se activa cuando las vistas del
+           conductor ponen data-tema="oscuro" en <html>; en el resto de roles
+           el atributo nunca se establece, así que esta regla no tiene efecto. */
+        :root[data-tema="oscuro"] {
+            --color-bg: #14171C;
+            --color-panel-dark: #10131A;
+            --color-success: #4ADE9C;
+            --color-warning: #F0B429;
+            --color-danger: #FF7B7B;
+            --color-neutral: #9AA0A8;
+            --color-text: #ECEDEE;
+            --color-text-secondary: #9BA0AA;
+            --color-card-bg: #1E2530;
+            --color-card-border: rgba(255, 255, 255, 0.08);
+            --color-input-bg: #262E3A;
+            --color-success-bg: rgba(74, 222, 156, 0.16);
+            --color-warning-bg: rgba(240, 180, 41, 0.18);
+            --color-danger-bg: rgba(255, 123, 123, 0.16);
+            --color-neutral-bg: rgba(154, 160, 168, 0.18);
         }
 
         * {
@@ -94,8 +124,8 @@
 
         /* Tarjetas */
         .card {
-            background-color: #fff;
-            border: 1px solid #E4E4E1;
+            background-color: var(--color-card-bg);
+            border: 1px solid var(--color-card-border);
             border-radius: 14px;
         }
 
@@ -108,10 +138,10 @@
             font-weight: 600;
         }
 
-        .badge-status.success { background-color: rgba(42, 140, 97, 0.12); color: var(--color-success); }
-        .badge-status.warning { background-color: rgba(184, 136, 23, 0.14); color: var(--color-warning); }
-        .badge-status.danger  { background-color: rgba(191, 61, 61, 0.12); color: var(--color-danger); }
-        .badge-status.neutral { background-color: rgba(128, 131, 135, 0.14); color: var(--color-neutral); }
+        .badge-status.success { background-color: var(--color-success-bg); color: var(--color-success); }
+        .badge-status.warning { background-color: var(--color-warning-bg); color: var(--color-warning); }
+        .badge-status.danger  { background-color: var(--color-danger-bg);  color: var(--color-danger); }
+        .badge-status.neutral { background-color: var(--color-neutral-bg); color: var(--color-neutral); }
 
         /* Formularios */
         .form-label {
@@ -123,6 +153,37 @@
         .form-control, .form-select {
             font-size: 12px;
             border-radius: 8px;
+            background-color: var(--color-input-bg);
+            border-color: var(--color-card-border);
+            color: var(--color-text);
+        }
+
+        .form-control::placeholder {
+            color: var(--color-text-secondary);
+        }
+
+        .form-control:focus, .form-select:focus {
+            background-color: var(--color-input-bg);
+            color: var(--color-text);
+        }
+
+        /* Switch sol/luna de tema, usado en las vistas del conductor */
+        .theme-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 1px solid var(--color-card-border);
+            background-color: var(--color-card-bg);
+            font-size: 14px;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .theme-toggle:hover {
+            border-color: var(--color-brand);
         }
 
         table {

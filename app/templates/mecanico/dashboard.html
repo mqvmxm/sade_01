@@ -7,5 +7,9 @@
     <p class="page-title mb-0">Bienvenido, {{ current_user.nombre }}</p>
     <a href="{{ url_for('auth.logout') }}" class="logout-link">Cerrar sesión →</a>
 </div>
-<p class="text-help">Panel de mecánico</p>
+<p class="text-help mb-4">Panel de mecánico</p>
+
+<a href="{{ url_for('mecanico.vehiculos_lista') }}" class="btn btn-primary">
+    Ver vehículos
+</a>
 {% endblock %}

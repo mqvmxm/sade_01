@@ -1,0 +1,143 @@
+{% extends 'admin/_layout.html' %}
+
+{% block title %}Historial de eventos — S.A.D.E.{% endblock %}
+
+{% block active_page %}historial{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <p class="page-title mb-0">Historial de eventos</p>
+    <a
+        href="{{ url_for('admin.historial', formato='csv', **filtros_actuales) }}"
+        class="btn btn-outline-secondary"
+    >
+        Exportar CSV
+    </a>
+</div>
+
+<form method="GET" action="{{ url_for('admin.historial') }}" class="card p-3 mb-4">
+    <div class="row g-3 align-items-end">
+        <div class="col-md-2">
+            <label for="filtro-tipo" class="form-label">Tipo de evento</label>
+            <select class="form-select" id="filtro-tipo" name="tipo">
+                <option value="">Todos</option>
+                {% for slug, info in tipos_evento.items() %}
+                    <option value="{{ slug }}" {{ 'selected' if filtros_actuales.get('tipo') == slug }}>
+                        {{ info[0] }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label for="filtro-conductor" class="form-label">Conductor</label>
+            <select class="form-select" id="filtro-conductor" name="conductor">
+                <option value="">Todos</option>
+                {% for conductor in conductores %}
+                    <option
+                        value="{{ conductor.id_conductor }}"
+                        {{ 'selected' if filtros_actuales.get('conductor') == conductor.id_conductor|string }}
+                    >
+                        {{ conductor.nombre }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label for="filtro-vehiculo" class="form-label">Vehículo</label>
+            <select class="form-select" id="filtro-vehiculo" name="vehiculo">
+                <option value="">Todos</option>
+                {% for vehiculo in vehiculos %}
+                    <option
+                        value="{{ vehiculo.id_vehiculo }}"
+                        {{ 'selected' if filtros_actuales.get('vehiculo') == vehiculo.id_vehiculo|string }}
+                    >
+                        {{ vehiculo.placas }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label for="filtro-desde" class="form-label">Desde</label>
+            <input
+                type="date"
+                class="form-control"
+                id="filtro-desde"
+                name="desde"
+                value="{{ filtros_actuales.get('desde', '') }}"
+            >
+        </div>
+        <div class="col-md-2">
+            <label for="filtro-hasta" class="form-label">Hasta</label>
+            <input
+                type="date"
+                class="form-control"
+                id="filtro-hasta"
+                name="hasta"
+                value="{{ filtros_actuales.get('hasta', '') }}"
+            >
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+        </div>
+    </div>
+</form>
+
+{% if eventos %}
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Tipo de evento</th>
+                <th>Conductor</th>
+                <th>Ruta</th>
+                <th>Fecha y hora</th>
+                <th>Cierre</th>
+                <th class="text-end">Detalle</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for evento in eventos %}
+            <tr>
+                <td><span class="badge-status {{ evento.badge }}">{{ evento.tipo_etiqueta }}</span></td>
+                <td>{{ evento.conductor }}</td>
+                <td>{{ evento.ruta }}</td>
+                <td>{{ evento.fecha.strftime('%d/%m/%Y %H:%M') if evento.fecha else '—' }}</td>
+                <td>{{ evento.cierre }}</td>
+                <td class="text-end">
+                    <a href="{{ evento.url_detalle }}" class="btn btn-sm btn-outline-secondary">
+                        Ver detalle
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mt-3">
+    <p class="text-help mb-0">
+        Página {{ pagina }} de {{ total_paginas }} · {{ total_eventos }} evento{{ 's' if total_eventos != 1 }} en total
+    </p>
+    <div>
+        {% if pagina > 1 %}
+            <a
+                href="{{ url_for('admin.historial', pagina=pagina - 1, **filtros_actuales) }}"
+                class="btn btn-sm btn-outline-secondary"
+            >
+                ← Anterior
+            </a>
+        {% endif %}
+        {% if pagina < total_paginas %}
+            <a
+                href="{{ url_for('admin.historial', pagina=pagina + 1, **filtros_actuales) }}"
+                class="btn btn-sm btn-outline-secondary"
+            >
+                Siguiente →
+            </a>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<p class="text-muted">No hay eventos que coincidan con los filtros seleccionados.</p>
+{% endif %}
+{% endblock %}
