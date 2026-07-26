@@ -45,6 +45,93 @@
                 </form>
             </div>
 
+            <p class="text-help mt-4 mb-2">¿Necesitas ayuda discretamente?</p>
+            <div
+                class="card p-3"
+                id="tarjeta-aviso-silencioso"
+                role="button"
+                tabindex="0"
+                style="cursor: pointer; user-select: none;"
+            >
+                <p class="mb-0" id="texto-aviso-silencioso" style="font-size: 12px; font-weight: 600;">
+                    Enviar aviso silencioso
+                </p>
+                <p class="text-help mb-0" id="subtexto-aviso-silencioso">
+                    Mantén presionado 3 seg · sin sonido ni aviso en pantalla
+                </p>
+            </div>
+
+            <script>
+                (function () {
+                    var tarjeta = document.getElementById('tarjeta-aviso-silencioso');
+                    var texto = document.getElementById('texto-aviso-silencioso');
+                    var subtexto = document.getElementById('subtexto-aviso-silencioso');
+                    var textoOriginal = texto.textContent;
+                    var subtextoOriginal = subtexto.textContent;
+                    var temporizador = null;
+
+                    function iniciarConteo() {
+                        cancelarConteo();
+                        temporizador = setTimeout(activarEmergencia, 3000);
+                    }
+
+                    function cancelarConteo() {
+                        if (temporizador) {
+                            clearTimeout(temporizador);
+                            temporizador = null;
+                        }
+                    }
+
+                    function mostrarConfirmacion() {
+                        texto.textContent = 'Aviso enviado';
+                        subtexto.textContent = '';
+                        setTimeout(function () {
+                            texto.textContent = textoOriginal;
+                            subtexto.textContent = subtextoOriginal;
+                        }, 4000);
+                    }
+
+                    function activarEmergencia() {
+                        temporizador = null;
+
+                        if (!navigator.geolocation) {
+                            return;
+                        }
+
+                        navigator.geolocation.getCurrentPosition(
+                            function (posicion) {
+                                var datos = new FormData();
+                                datos.append('latitud', posicion.coords.latitude);
+                                datos.append('longitud', posicion.coords.longitude);
+
+                                fetch('{{ url_for("emergencia.activar") }}', {
+                                    method: 'POST',
+                                    body: datos,
+                                })
+                                    .then(function (respuesta) {
+                                        if (respuesta.ok) {
+                                            mostrarConfirmacion();
+                                        }
+                                    })
+                                    .catch(function () {
+                                        // Falla silenciosa: un error técnico no debe notarse en pantalla.
+                                    });
+                            },
+                            function () {
+                                // Sin permiso o falla de geolocalización: también silencioso.
+                            }
+                        );
+                    }
+
+                    tarjeta.addEventListener('mousedown', iniciarConteo);
+                    tarjeta.addEventListener('touchstart', iniciarConteo);
+                    tarjeta.addEventListener('mouseup', cancelarConteo);
+                    tarjeta.addEventListener('mouseleave', cancelarConteo);
+                    tarjeta.addEventListener('touchend', cancelarConteo);
+                    tarjeta.addEventListener('touchcancel', cancelarConteo);
+                })();
+            </script>
+
         {% else %}
             <div class="card p-4">
                 <p class="section-subtitle mb-3">Registrar salida</p>
