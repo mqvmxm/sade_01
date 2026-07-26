@@ -1,0 +1,54 @@
+{% extends 'admin/_layout.html' %}
+
+{% block title %}Alertas — S.A.D.E.{% endblock %}
+
+{% block active_page %}alertas{% endblock %}
+
+{% block admin_content %}
+<p class="page-title mb-4">Alertas</p>
+
+{% if alertas %}
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Tipo</th>
+                <th>Mensaje</th>
+                <th>Conductor</th>
+                <th>Ruta</th>
+                <th>Generada</th>
+                <th class="text-end">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for alerta in alertas %}
+            <tr>
+                <td>
+                    {% if alerta.tipo == 'retraso' %}
+                        <span class="badge-status warning">Retraso</span>
+                    {% elif alerta.tipo == 'panico' %}
+                        <span class="badge-status danger">Pánico</span>
+                    {% elif alerta.tipo == 'licencia_vencida' %}
+                        <span class="badge-status danger">Licencia vencida</span>
+                    {% endif %}
+                </td>
+                <td>{{ alerta.mensaje }}</td>
+                <td>{{ alerta.conductor.nombre }}</td>
+                <td>{{ alerta.viaje.origen }} → {{ alerta.viaje.destino }}</td>
+                <td>{{ alerta.generada_en.strftime('%d/%m/%Y %H:%M') }}</td>
+                <td class="text-end">
+                    <form method="POST" action="{{ url_for('admin.alertas_atender', id_alerta=alerta.id_alerta) }}">
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">
+                            Marcar como atendida
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No hay alertas pendientes.</p>
+{% endif %}
+{% endblock %}

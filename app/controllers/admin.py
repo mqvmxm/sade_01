@@ -9,6 +9,7 @@ from flask_login import current_user, login_required
 from sqlalchemy.exc import IntegrityError
 
 from app import db
+from app.models.alerta import Alerta
 from app.models.conductor import Conductor
 from app.models.vehiculo import Vehiculo
 from app.models.viaje import Viaje
@@ -305,6 +306,35 @@ def vehiculos_editar(id_vehiculo):
 @admin.route("/viajes")
 @admin_required
 def viajes_lista():
-    """Lista los viajes con estado 'activo' para monitoreo del administrador (RF-3)."""
-    viajes = Viaje.query.filter_by(estado="activo").order_by(Viaje.hora_salida).all()
+    """Lista los viajes 'activo' o 'alerta' para monitoreo del administrador (RF-3)."""
+    viajes = (
+        Viaje.query.filter(Viaje.estado.in_(["activo", "alerta"]))
+        .order_by(Viaje.hora_salida)
+        .all()
+    )
     return render_template("admin/viajes/lista.html", viajes=viajes)
+
+
+@admin.route("/alertas")
+@admin_required
+def alertas_lista():
+    """Lista las alertas sin atender, más recientes primero (RF-3.5)."""
+    alertas = (
+        Alerta.query.filter_by(atendida=False)
+        .order_by(Alerta.generada_en.desc())
+        .all()
+    )
+    return render_template("admin/alertas/lista.html", alertas=alertas)
+
+
+@admin.route("/alertas/<int:id_alerta>/atender", methods=["POST"])
+@admin_required
+def alertas_atender(id_alerta):
+    """Marca una alerta como atendida (RF-3.5)."""
+    alerta = Alerta.query.get_or_404(id_alerta)
+    alerta.atendida = True
+    alerta.atendida_en = datetime.now()
+    db.session.commit()
+
+    flash("Alerta marcada como atendida.", "success")
+    return redirect(url_for("admin.alertas_lista"))

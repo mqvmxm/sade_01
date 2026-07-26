@@ -30,13 +30,19 @@
                 <td>{{ viaje.destino }}</td>
                 <td>{{ viaje.hora_salida.strftime('%d/%m/%Y %H:%M') }}</td>
                 <td>{{ viaje.eta.strftime('%d/%m/%Y %H:%M') }}</td>
-                <td><span class="badge-status success">Activo</span></td>
+                <td>
+                    {% if viaje.estado == 'alerta' %}
+                        <span class="badge-status warning">En alerta</span>
+                    {% else %}
+                        <span class="badge-status success">Activo</span>
+                    {% endif %}
+                </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
 {% else %}
-<p class="text-muted">No hay viajes activos en este momento.</p>
+<p class="text-muted">No hay viajes activos ni en alerta en este momento.</p>
 {% endif %}
 {% endblock %}

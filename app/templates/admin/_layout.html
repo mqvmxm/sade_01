@@ -34,6 +34,12 @@
             >
                 Viajes activos
             </a>
+            <a
+                class="admin-nav-link {{ 'active' if self.active_page() == 'alertas' }}"
+                href="{{ url_for('admin.alertas_lista') }}"
+            >
+                Alertas
+            </a>
         </nav>
 
         <div class="admin-sidebar-footer">
