@@ -6,6 +6,7 @@ from functools import wraps
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from sqlalchemy import case
 from sqlalchemy.exc import IntegrityError
 
 from app import db
@@ -306,10 +307,20 @@ def vehiculos_editar(id_vehiculo):
 @admin.route("/viajes")
 @admin_required
 def viajes_lista():
-    """Lista los viajes 'activo' o 'alerta' para monitoreo del administrador (RF-3)."""
+    """Lista los viajes 'activo', 'alerta' o 'emergencia' para monitoreo del administrador (RF-3/RF-4).
+
+    Las emergencias reales van siempre primero, sin importar su hora_salida:
+    son lo más urgente y no deben poder quedar enterradas debajo de simples
+    retrasos o viajes normales más recientes.
+    """
+    prioridad_estado = case(
+        (Viaje.estado == "emergencia", 0),
+        (Viaje.estado == "alerta", 1),
+        else_=2,
+    )
     viajes = (
-        Viaje.query.filter(Viaje.estado.in_(["activo", "alerta"]))
-        .order_by(Viaje.hora_salida)
+        Viaje.query.filter(Viaje.estado.in_(["activo", "alerta", "emergencia"]))
+        .order_by(prioridad_estado, Viaje.hora_salida)
         .all()
     )
     return render_template("admin/viajes/lista.html", viajes=viajes)
