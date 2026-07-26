@@ -1,1 +1,86 @@
-<h1>Bienvenido, {{ current_user.nombre }}</h1>
+{% extends 'base.html' %}
+
+{% block title %}Panel de conductor — S.A.D.E.{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <p class="page-title mb-1">Hola, {{ current_user.nombre }}</p>
+        <p class="text-help mb-4">Panel de conductor</p>
+
+        {% if not conductor.licencia_vigente() %}
+            <div class="card p-4">
+                <span class="badge-status danger mb-2" style="width: fit-content;">Licencia vencida</span>
+                <p class="mb-0">
+                    Tu licencia de conducir está vencida y no puedes iniciar un nuevo viaje.
+                    Contacta al administrador para regularizar tu situación.
+                </p>
+            </div>
+
+        {% elif viaje_activo %}
+            <div class="card p-4">
+                <p class="section-subtitle mb-3">Viaje en curso</p>
+                <dl class="row mb-4">
+                    <dt class="col-4 text-help">Origen</dt>
+                    <dd class="col-8">{{ viaje_activo.origen }}</dd>
+
+                    <dt class="col-4 text-help">Destino</dt>
+                    <dd class="col-8">{{ viaje_activo.destino }}</dd>
+
+                    <dt class="col-4 text-help">Salida</dt>
+                    <dd class="col-8">{{ viaje_activo.hora_salida.strftime('%d/%m/%Y %H:%M') }}</dd>
+
+                    <dt class="col-4 text-help">ETA</dt>
+                    <dd class="col-8">{{ viaje_activo.eta.strftime('%d/%m/%Y %H:%M') }}</dd>
+                </dl>
+
+                <form
+                    method="POST"
+                    action="{{ url_for('conductor.viajes_confirmar_llegada', id_viaje=viaje_activo.id_viaje) }}"
+                >
+                    <button type="submit" class="btn btn-primary w-100">Confirmar llegada</button>
+                </form>
+            </div>
+
+        {% else %}
+            <div class="card p-4">
+                <p class="section-subtitle mb-3">Registrar salida</p>
+                <form method="POST" action="{{ url_for('conductor.viajes_nuevo') }}">
+                    <div class="mb-3">
+                        <label for="origen" class="form-label">Origen</label>
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="origen"
+                            name="origen"
+                            required
+                            autofocus
+                        >
+                    </div>
+                    <div class="mb-3">
+                        <label for="destino" class="form-label">Destino</label>
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="destino"
+                            name="destino"
+                            required
+                        >
+                    </div>
+                    <div class="mb-3">
+                        <label for="eta" class="form-label">Hora estimada de llegada</label>
+                        <input
+                            type="datetime-local"
+                            class="form-control"
+                            id="eta"
+                            name="eta"
+                            required
+                        >
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Iniciar viaje</button>
+                </form>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

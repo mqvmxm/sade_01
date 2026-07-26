@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from app import db
 from app.models.conductor import Conductor
 from app.models.vehiculo import Vehiculo
+from app.models.viaje import Viaje
 
 admin = Blueprint("admin", __name__)
 
@@ -299,3 +300,11 @@ def vehiculos_editar(id_vehiculo):
         vehiculo=_vehiculo_para_formulario(vehiculo),
         id_vehiculo=id_vehiculo,
     )
+
+
+@admin.route("/viajes")
+@admin_required
+def viajes_lista():
+    """Lista los viajes con estado 'activo' para monitoreo del administrador (RF-3)."""
+    viajes = Viaje.query.filter_by(estado="activo").order_by(Viaje.hora_salida).all()
+    return render_template("admin/viajes/lista.html", viajes=viajes)

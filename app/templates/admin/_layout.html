@@ -28,6 +28,12 @@
             >
                 Vehículos
             </a>
+            <a
+                class="admin-nav-link {{ 'active' if self.active_page() == 'viajes' }}"
+                href="{{ url_for('admin.viajes_lista') }}"
+            >
+                Viajes activos
+            </a>
         </nav>
     </aside>
 

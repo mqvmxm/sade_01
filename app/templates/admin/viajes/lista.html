@@ -1,0 +1,42 @@
+{% extends 'admin/_layout.html' %}
+
+{% block title %}Viajes activos — S.A.D.E.{% endblock %}
+
+{% block active_page %}viajes{% endblock %}
+
+{% block admin_content %}
+<p class="page-title mb-4">Viajes activos</p>
+
+{% if viajes %}
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Conductor</th>
+                <th>Vehículo</th>
+                <th>Origen</th>
+                <th>Destino</th>
+                <th>Salida</th>
+                <th>ETA</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for viaje in viajes %}
+            <tr>
+                <td>{{ viaje.conductor.nombre }}</td>
+                <td>{{ viaje.vehiculo.placas }}</td>
+                <td>{{ viaje.origen }}</td>
+                <td>{{ viaje.destino }}</td>
+                <td>{{ viaje.hora_salida.strftime('%d/%m/%Y %H:%M') }}</td>
+                <td>{{ viaje.eta.strftime('%d/%m/%Y %H:%M') }}</td>
+                <td><span class="badge-status success">Activo</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No hay viajes activos en este momento.</p>
+{% endif %}
+{% endblock %}
