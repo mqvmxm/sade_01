@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app import db
 from app.models.conductor import Conductor
+from app.models.vehiculo import Vehiculo
 
 admin = Blueprint("admin", __name__)
 
@@ -60,6 +61,42 @@ def _conductor_para_formulario(conductor):
         "fecha_vencimiento_lic": conductor.fecha_vencimiento_lic.isoformat(),
         "contacto_emergencia": conductor.contacto_emergencia,
         "tel_emergencia": conductor.tel_emergencia,
+    }
+
+
+def _datos_vehiculo_desde_formulario():
+    """Lee y valida los campos comunes del formulario de vehículo.
+
+    Retorna un dict listo para crear/actualizar un Vehiculo (sin 'estado', que
+    se maneja aparte), o None (y ya hizo flash del error) si el año no es válido.
+    """
+    anio_texto = request.form.get("anio", "")
+    try:
+        anio = int(anio_texto)
+    except ValueError:
+        flash("El año del vehículo no es válido.", "error")
+        return None
+
+    return {
+        "placas": request.form.get("placas", "").strip(),
+        "num_unidad": request.form.get("num_unidad", "").strip(),
+        "marca": request.form.get("marca", "").strip(),
+        "modelo": request.form.get("modelo", "").strip(),
+        "anio": anio,
+        "num_serie": request.form.get("num_serie", "").strip(),
+    }
+
+
+def _vehiculo_para_formulario(vehiculo):
+    """Convierte un Vehiculo de BD a dict apto para prellenar el formulario HTML."""
+    return {
+        "placas": vehiculo.placas,
+        "num_unidad": vehiculo.num_unidad,
+        "marca": vehiculo.marca,
+        "modelo": vehiculo.modelo,
+        "anio": vehiculo.anio,
+        "num_serie": vehiculo.num_serie,
+        "estado": vehiculo.estado,
     }
 
 
@@ -148,4 +185,117 @@ def conductores_editar(id_conductor):
         "admin/conductores/formulario.html",
         conductor=_conductor_para_formulario(conductor),
         id_conductor=id_conductor,
+    )
+
+
+@admin.route("/vehiculos")
+@admin_required
+def vehiculos_lista():
+    """Lista todos los vehículos registrados con su estado actual (RF-2.3)."""
+    vehiculos = Vehiculo.query.order_by(Vehiculo.placas).all()
+    return render_template("admin/vehiculos/lista.html", vehiculos=vehiculos)
+
+
+@admin.route("/vehiculos/nuevo", methods=["GET", "POST"])
+@admin_required
+def vehiculos_nuevo():
+    """Muestra el formulario de alta y crea el Vehiculo al enviarlo (RF-2.2).
+
+    El estado no se pide aquí: todo vehículo nuevo inicia en 'disponible'.
+    """
+    if request.method == "POST":
+        datos = _datos_vehiculo_desde_formulario()
+        if datos is None:
+            return render_template(
+                "admin/vehiculos/formulario.html", vehiculo=request.form, id_vehiculo=None
+            )
+
+        vehiculo = Vehiculo(**datos)
+        try:
+            db.session.add(vehiculo)
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            flash(
+                f"Ya existe un vehículo con las placas '{datos['placas']}'.",
+                "error",
+            )
+            return render_template(
+                "admin/vehiculos/formulario.html", vehiculo=request.form, id_vehiculo=None
+            )
+
+        flash(f"Vehículo '{vehiculo.placas}' registrado correctamente.", "success")
+        return redirect(url_for("admin.vehiculos_lista"))
+
+    return render_template("admin/vehiculos/formulario.html", vehiculo=None, id_vehiculo=None)
+
+
+@admin.route("/vehiculos/<int:id_vehiculo>/editar", methods=["GET", "POST"])
+@admin_required
+def vehiculos_editar(id_vehiculo):
+    """Muestra el formulario prellenado y actualiza los datos del vehículo (RF-2.2).
+
+    El estado solo puede cambiarse aquí entre 'disponible' y 'en_taller'. Si el
+    vehículo está actualmente 'en_ruta' (viaje activo, RF-5.5), el estado no es
+    editable desde este formulario bajo ninguna circunstancia: cualquier POST que
+    incluya el campo 'estado' se rechaza, sin importar su valor.
+    """
+    vehiculo = Vehiculo.query.get_or_404(id_vehiculo)
+
+    if request.method == "POST":
+        if vehiculo.estado == "en_ruta" and "estado" in request.form:
+            flash(
+                "No se puede modificar el estado de un vehículo en ruta; "
+                "se actualizará automáticamente al finalizar el viaje activo.",
+                "error",
+            )
+            return render_template(
+                "admin/vehiculos/formulario.html",
+                vehiculo=request.form,
+                id_vehiculo=id_vehiculo,
+            )
+
+        datos = _datos_vehiculo_desde_formulario()
+        if datos is None:
+            return render_template(
+                "admin/vehiculos/formulario.html",
+                vehiculo=request.form,
+                id_vehiculo=id_vehiculo,
+            )
+
+        if vehiculo.estado != "en_ruta":
+            estado = request.form.get("estado", "")
+            if estado not in ("disponible", "en_taller"):
+                flash("El estado seleccionado no es válido.", "error")
+                return render_template(
+                    "admin/vehiculos/formulario.html",
+                    vehiculo=request.form,
+                    id_vehiculo=id_vehiculo,
+                )
+            datos["estado"] = estado
+
+        for campo, valor in datos.items():
+            setattr(vehiculo, campo, valor)
+
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            flash(
+                f"Ya existe un vehículo con las placas '{datos['placas']}'.",
+                "error",
+            )
+            return render_template(
+                "admin/vehiculos/formulario.html",
+                vehiculo=request.form,
+                id_vehiculo=id_vehiculo,
+            )
+
+        flash(f"Vehículo '{vehiculo.placas}' actualizado correctamente.", "success")
+        return redirect(url_for("admin.vehiculos_lista"))
+
+    return render_template(
+        "admin/vehiculos/formulario.html",
+        vehiculo=_vehiculo_para_formulario(vehiculo),
+        id_vehiculo=id_vehiculo,
     )

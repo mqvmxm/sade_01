@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% set v = vehiculo or {} %}
+{% set es_edicion = id_vehiculo is not none %}
+
+{% block title %}{{ 'Editar vehículo' if es_edicion else 'Nuevo vehículo' }} — S.A.D.E.{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <h1 class="mb-4">{{ 'Editar vehículo' if es_edicion else 'Nuevo vehículo' }}</h1>
+
+        <form
+            method="POST"
+            action="{{ url_for('admin.vehiculos_editar', id_vehiculo=id_vehiculo) if es_edicion else url_for('admin.vehiculos_nuevo') }}"
+        >
+            <div class="mb-3">
+                <label for="placas" class="form-label">Placas</label>
+                <input
+                    type="text"
+                    class="form-control"
+                    id="placas"
+                    name="placas"
+                    value="{{ v.placas }}"
+                    required
+                >
+            </div>
+            <div class="mb-3">
+                <label for="num_unidad" class="form-label">No. de unidad</label>
+                <input
+                    type="text"
+                    class="form-control"
+                    id="num_unidad"
+                    name="num_unidad"
+                    value="{{ v.num_unidad }}"
+                    required
+                >
+            </div>
+            <div class="mb-3">
+                <label for="marca" class="form-label">Marca</label>
+                <input
+                    type="text"
+                    class="form-control"
+                    id="marca"
+                    name="marca"
+                    value="{{ v.marca }}"
+                    required
+                >
+            </div>
+            <div class="mb-3">
+                <label for="modelo" class="form-label">Modelo</label>
+                <input
+                    type="text"
+                    class="form-control"
+                    id="modelo"
+                    name="modelo"
+                    value="{{ v.modelo }}"
+                    required
+                >
+            </div>
+            <div class="mb-3">
+                <label for="anio" class="form-label">Año</label>
+                <input
+                    type="number"
+                    class="form-control"
+                    id="anio"
+                    name="anio"
+                    value="{{ v.anio }}"
+                    required
+                >
+            </div>
+            <div class="mb-3">
+                <label for="num_serie" class="form-label">No. de serie</label>
+                <input
+                    type="text"
+                    class="form-control"
+                    id="num_serie"
+                    name="num_serie"
+                    value="{{ v.num_serie }}"
+                    required
+                >
+            </div>
+
+            {% if es_edicion %}
+            <div class="mb-3">
+                <label class="form-label">Estado</label>
+                {% if v.estado == 'en_ruta' %}
+                <div class="alert alert-primary mb-0">
+                    Este vehículo está en ruta — el estado se actualizará
+                    automáticamente al finalizar el viaje activo.
+                </div>
+                {% else %}
+                <select class="form-select" id="estado" name="estado" required>
+                    <option value="disponible" {{ 'selected' if v.estado == 'disponible' }}>
+                        Disponible
+                    </option>
+                    <option value="en_taller" {{ 'selected' if v.estado == 'en_taller' }}>
+                        En taller
+                    </option>
+                </select>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    {{ 'Guardar cambios' if es_edicion else 'Registrar vehículo' }}
+                </button>
+                <a href="{{ url_for('admin.vehiculos_lista') }}" class="btn btn-outline-secondary">
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
