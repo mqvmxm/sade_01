@@ -107,7 +107,7 @@ def viajes_nuevo():
         id_vehiculo=vehiculo.id_vehiculo,
         origen=origen,
         destino=destino,
-        hora_salida=datetime.utcnow(),
+        hora_salida=datetime.now(),
         eta=eta,
         estado="activo",
     )
@@ -140,7 +140,7 @@ def viajes_confirmar_llegada(id_viaje):
         flash("Ese viaje ya no está activo.", "error")
         return redirect(url_for("conductor.dashboard"))
 
-    viaje.hora_llegada = datetime.utcnow()
+    viaje.hora_llegada = datetime.now()
     viaje.estado = "completado"
     viaje.vehiculo.estado = "disponible"
     db.session.commit()

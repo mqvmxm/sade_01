@@ -25,6 +25,6 @@ class Bitacora(db.Model):
     descripcion = db.Column(db.Text, nullable=False)
     tabla_afectada = db.Column(db.String(80), nullable=False)
     registro_id = db.Column(db.Integer, nullable=False)
-    fecha = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    fecha = db.Column(db.DateTime, nullable=False, default=datetime.now)
 
     usuario = db.relationship("Usuario", backref=db.backref("bitacora", lazy=True))

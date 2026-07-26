@@ -26,7 +26,7 @@ class Vehiculo(db.Model):
     num_serie = db.Column(db.String(50), nullable=False)
     estado = db.Column(db.String(20), nullable=False, default="disponible")
     ultima_actualizacion = db.Column(
-        db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime, nullable=False, default=datetime.now, onupdate=datetime.now
     )
 
     __table_args__ = (

@@ -20,7 +20,7 @@ class Conductor(db.Model):
     contacto_emergencia = db.Column(db.String(120), nullable=False)
     tel_emergencia = db.Column(db.String(20), nullable=False)
     activo = db.Column(db.Boolean, nullable=False, default=True)
-    fecha_registro = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    fecha_registro = db.Column(db.DateTime, nullable=False, default=datetime.now)
 
     def licencia_vigente(self):
         """Compara la fecha de vencimiento de la licencia contra la fecha actual (RF-6.1).

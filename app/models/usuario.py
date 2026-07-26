@@ -29,7 +29,7 @@ class Usuario(db.Model, UserMixin):
     id_conductor = db.Column(
         db.Integer, db.ForeignKey("conductores.id_conductor"), nullable=True
     )
-    fecha_registro = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    fecha_registro = db.Column(db.DateTime, nullable=False, default=datetime.now)
 
     conductor = db.relationship("Conductor", backref=db.backref("usuarios", lazy=True))
 

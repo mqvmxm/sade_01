@@ -30,7 +30,7 @@ class Emergencia(db.Model):
     estado_envio_ws = db.Column(db.String(20), nullable=False, default="pendiente")
     estado_envio_sms = db.Column(db.String(20), nullable=False, default="pendiente")
     enviado_offline = db.Column(db.Boolean, nullable=False, default=False)
-    activada_en = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    activada_en = db.Column(db.DateTime, nullable=False, default=datetime.now)
 
     viaje = db.relationship("Viaje", backref=db.backref("emergencias", lazy=True))
     conductor = db.relationship("Conductor", backref=db.backref("emergencias", lazy=True))

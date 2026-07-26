@@ -27,7 +27,7 @@ class ReporteAveria(db.Model):
     )
     descripcion = db.Column(db.Text, nullable=False)
     estado_vehiculo_prev = db.Column(db.String(20), nullable=False)
-    registrado_en = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    registrado_en = db.Column(db.DateTime, nullable=False, default=datetime.now)
 
     viaje = db.relationship("Viaje", backref=db.backref("reportes_averia", lazy=True))
     vehiculo = db.relationship(

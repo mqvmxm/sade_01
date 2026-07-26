@@ -27,7 +27,7 @@ class Alerta(db.Model):
     prioridad = db.Column(db.Integer, nullable=False)
     mensaje = db.Column(db.Text, nullable=False)
     atendida = db.Column(db.Boolean, nullable=False, default=False)
-    generada_en = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    generada_en = db.Column(db.DateTime, nullable=False, default=datetime.now)
     atendida_en = db.Column(db.DateTime, nullable=True)
 
     viaje = db.relationship("Viaje", backref=db.backref("alertas", lazy=True))

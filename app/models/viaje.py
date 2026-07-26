@@ -33,7 +33,7 @@ class Viaje(db.Model):
     eta = db.Column(db.DateTime, nullable=False)
     hora_llegada = db.Column(db.DateTime, nullable=True)
     estado = db.Column(db.String(20), nullable=False, default="activo")
-    fecha_registro = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    fecha_registro = db.Column(db.DateTime, nullable=False, default=datetime.now)
 
     conductor = db.relationship("Conductor", backref=db.backref("viajes", lazy=True))
     vehiculo = db.relationship("Vehiculo", backref=db.backref("viajes", lazy=True))
