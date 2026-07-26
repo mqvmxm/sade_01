@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-S.A.D.E. (Sistema de Alerta y Detección de Emergencias) — a Flask web app for tracking driver
-trips, vehicles, and emergency alerts for a fleet. Spanish is the language of all identifiers,
-templates, and user-facing text; keep new code consistent with that.
+S.A.D.E. (Sistema de Administración de Disponibilidad y Emergencias) — a Flask web app for
+tracking driver trips, vehicles, and emergency alerts for a fleet. Spanish is the language of all
+identifiers, templates, and user-facing text; keep new code consistent with that.
 
 ## Setup & running
 

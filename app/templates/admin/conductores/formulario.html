@@ -1,14 +1,16 @@
-{% extends 'base.html' %}
+{% extends 'admin/_layout.html' %}
 
 {% set c = conductor or {} %}
 {% set es_edicion = id_conductor is not none %}
 
 {% block title %}{{ 'Editar conductor' if es_edicion else 'Nuevo conductor' }} — S.A.D.E.{% endblock %}
 
-{% block content %}
+{% block active_page %}conductores{% endblock %}
+
+{% block admin_content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
-        <h1 class="mb-4">{{ 'Editar conductor' if es_edicion else 'Nuevo conductor' }}</h1>
+        <p class="page-title mb-4">{{ 'Editar conductor' if es_edicion else 'Nuevo conductor' }}</p>
 
         <form
             method="POST"

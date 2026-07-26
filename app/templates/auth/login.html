@@ -2,34 +2,108 @@
 
 {% block title %}Iniciar sesión — S.A.D.E.{% endblock %}
 
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-4">
-        <h1 class="mb-4">Iniciar sesión</h1>
-        <form method="POST">
-            <div class="mb-3">
-                <label for="nombre_usuario" class="form-label">Usuario</label>
-                <input
-                    type="text"
-                    class="form-control"
-                    id="nombre_usuario"
-                    name="nombre_usuario"
-                    required
-                    autofocus
-                >
-            </div>
-            <div class="mb-3">
-                <label for="contrasena" class="form-label">Contraseña</label>
-                <input
-                    type="password"
-                    class="form-control"
-                    id="contrasena"
-                    name="contrasena"
-                    required
-                >
-            </div>
-            <button type="submit" class="btn btn-primary w-100">Entrar</button>
-        </form>
+{% block extra_head %}
+<style>
+    html, body {
+        height: 100%;
+    }
+
+    .login-shell {
+        min-height: 100vh;
+        display: flex;
+    }
+
+    .login-panel-brand {
+        background-color: var(--color-panel-dark);
+        color: #fff;
+        flex: 1 1 45%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 4rem;
+    }
+
+    .login-panel-brand .brand-mark {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        background-color: var(--color-brand);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 18px;
+        margin-bottom: 1.5rem;
+    }
+
+    .login-panel-brand h1 {
+        color: #fff;
+        font-size: 22px;
+        font-weight: 700;
+    }
+
+    .login-panel-brand p {
+        color: #9BA0AA;
+        font-size: 12px;
+        max-width: 26rem;
+    }
+
+    .login-panel-form {
+        flex: 1 1 55%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--color-bg);
+        padding: 2rem;
+    }
+
+    .login-card {
+        width: 100%;
+        max-width: 22rem;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="login-shell">
+    <div class="login-panel-brand d-none d-md-flex">
+        <div class="brand-mark">SD</div>
+        <h1>S.A.D.E.</h1>
+        <p>Sistema de Administración de Disponibilidad y Emergencias — gestión de flota, conductores y viajes en un solo lugar.</p>
+    </div>
+
+    <div class="login-panel-form">
+        <div class="login-card">
+            {{ self.flashes() }}
+
+            <p class="page-title mb-1">Iniciar sesión</p>
+            <p class="text-help mb-4">Ingresa tus credenciales para continuar</p>
+
+            <form method="POST">
+                <div class="mb-3">
+                    <label for="nombre_usuario" class="form-label">Usuario</label>
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="nombre_usuario"
+                        name="nombre_usuario"
+                        required
+                        autofocus
+                    >
+                </div>
+                <div class="mb-3">
+                    <label for="contrasena" class="form-label">Contraseña</label>
+                    <input
+                        type="password"
+                        class="form-control"
+                        id="contrasena"
+                        name="contrasena"
+                        required
+                    >
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Entrar</button>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}

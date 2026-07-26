@@ -29,3 +29,9 @@ class Conductor(db.Model):
         vencida (RF-6.2).
         """
         return self.fecha_vencimiento_lic >= date.today()
+
+    def licencia_proxima_a_vencer(self, dias=30):
+        """Indica si la licencia sigue vigente pero vence dentro de los próximos `dias` días."""
+        if not self.licencia_vigente():
+            return False
+        return (self.fecha_vencimiento_lic - date.today()).days <= dias

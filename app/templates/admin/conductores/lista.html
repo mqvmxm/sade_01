@@ -1,10 +1,12 @@
-{% extends 'base.html' %}
+{% extends 'admin/_layout.html' %}
 
 {% block title %}Conductores — S.A.D.E.{% endblock %}
 
-{% block content %}
+{% block active_page %}conductores{% endblock %}
+
+{% block admin_content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">Conductores</h1>
+    <p class="page-title mb-0">Conductores</p>
     <a href="{{ url_for('admin.conductores_nuevo') }}" class="btn btn-primary">
         + Nuevo conductor
     </a>
@@ -31,10 +33,12 @@
                 <td>{{ conductor.num_licencia }}</td>
                 <td>{{ conductor.fecha_vencimiento_lic.strftime('%d/%m/%Y') }}</td>
                 <td>
-                    {% if conductor.licencia_vigente() %}
-                        <span class="badge bg-success">Vigente</span>
+                    {% if not conductor.licencia_vigente() %}
+                        <span class="badge-status danger">Vencida</span>
+                    {% elif conductor.licencia_proxima_a_vencer() %}
+                        <span class="badge-status warning">Próxima a vencer</span>
                     {% else %}
-                        <span class="badge bg-danger">Vencida</span>
+                        <span class="badge-status success">Vigente</span>
                     {% endif %}
                 </td>
                 <td class="text-end">

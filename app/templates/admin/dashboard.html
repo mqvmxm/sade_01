@@ -1,19 +1,10 @@
-{% extends 'base.html' %}
+{% extends 'admin/_layout.html' %}
 
 {% block title %}Panel de administrador — S.A.D.E.{% endblock %}
 
-{% block content %}
-<ul class="nav nav-pills mb-4">
-    <li class="nav-item">
-        <a class="nav-link active" href="{{ url_for('admin.dashboard') }}">Dashboard</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('admin.conductores_lista') }}">Conductores</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('admin.vehiculos_lista') }}">Vehículos</a>
-    </li>
-</ul>
+{% block active_page %}inicio{% endblock %}
 
-<h1>Bienvenido, {{ current_user.nombre }}</h1>
+{% block admin_content %}
+<p class="page-title mb-1">Bienvenido, {{ current_user.nombre }}</p>
+<p class="text-help">Panel de administrador — S.A.D.E.</p>
 {% endblock %}

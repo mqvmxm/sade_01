@@ -1,14 +1,16 @@
-{% extends 'base.html' %}
+{% extends 'admin/_layout.html' %}
 
 {% set v = vehiculo or {} %}
 {% set es_edicion = id_vehiculo is not none %}
 
 {% block title %}{{ 'Editar vehículo' if es_edicion else 'Nuevo vehículo' }} — S.A.D.E.{% endblock %}
 
-{% block content %}
+{% block active_page %}vehiculos{% endblock %}
+
+{% block admin_content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
-        <h1 class="mb-4">{{ 'Editar vehículo' if es_edicion else 'Nuevo vehículo' }}</h1>
+        <p class="page-title mb-4">{{ 'Editar vehículo' if es_edicion else 'Nuevo vehículo' }}</p>
 
         <form
             method="POST"
@@ -85,7 +87,7 @@
             <div class="mb-3">
                 <label class="form-label">Estado</label>
                 {% if v.estado == 'en_ruta' %}
-                <div class="alert alert-primary mb-0">
+                <div class="alert alert-success mb-0">
                     Este vehículo está en ruta — el estado se actualizará
                     automáticamente al finalizar el viaje activo.
                 </div>
