@@ -5,6 +5,7 @@
 
 import os
 
+import click
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask
 from flask_login import LoginManager
@@ -55,6 +56,7 @@ def create_app(config_class=Config):
     app.register_blueprint(emergencia_bp, url_prefix='/emergencia')
 
     _iniciar_scheduler(app)
+    _registrar_cli(app)
 
     return app
 
@@ -88,3 +90,77 @@ def _iniciar_scheduler(app):
         id="revisar_viajes_activos",
     )
     scheduler.start()
+
+
+def _registrar_cli(app):
+    """Registra los comandos de terminal de la app (RF-1.1, alta de admin).
+
+    El alta de administrador es deliberadamente un comando de Flask CLI y
+    NUNCA una ruta HTTP: es el rol más sensible del sistema (admin puede dar
+    de alta cualquier otra cuenta), así que no debe existir ninguna
+    superficie de ataque en el navegador para crearlo. Solo quien tiene
+    acceso a la terminal del servidor puede correr `flask crear-admin`.
+    """
+
+    @app.cli.command("crear-admin")
+    def crear_admin():
+        """Crea una cuenta de administrador de forma interactiva."""
+        from sqlalchemy.exc import IntegrityError
+
+        from app.models.bitacora import Bitacora
+        from app.models.usuario import Usuario
+
+        nombre = click.prompt("Nombre").strip()
+
+        nombre_usuario = click.prompt("Nombre de usuario").strip()
+        while not nombre_usuario:
+            click.echo("El nombre de usuario no puede estar vacío.")
+            nombre_usuario = click.prompt("Nombre de usuario").strip()
+
+        correo = click.prompt("Correo").strip()
+        while not correo:
+            click.echo("El correo es obligatorio.")
+            correo = click.prompt("Correo").strip()
+
+        contrasena = click.prompt(
+            "Contraseña", hide_input=True, confirmation_prompt=True
+        )
+
+        usuario = Usuario(
+            nombre=nombre,
+            nombre_usuario=nombre_usuario,
+            email=correo,
+            rol="admin",
+            activo=True,
+        )
+        usuario.set_password(contrasena)
+
+        try:
+            db.session.add(usuario)
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            click.echo(
+                f"Ya existe una cuenta con el nombre de usuario '{nombre_usuario}'. "
+                "No se creó nada."
+            )
+            return
+
+        # No hay sesión de "quien lo crea": este comando corre desde la
+        # terminal, sin un current_user autenticado. id_usuario de Bitacora
+        # es NOT NULL y no hay otro candidato razonable, así que se registra
+        # al propio admin recién creado como autor de su alta.
+        bitacora = Bitacora(
+            id_usuario=usuario.id_usuario,
+            accion="alta_cuenta_admin",
+            descripcion=(
+                f"Alta de cuenta de administrador '{usuario.nombre}' (usuario "
+                f"'{usuario.nombre_usuario}') vía flask crear-admin."
+            ),
+            tabla_afectada="usuarios",
+            registro_id=usuario.id_usuario,
+        )
+        db.session.add(bitacora)
+        db.session.commit()
+
+        click.echo(f"Administrador creado correctamente: {usuario.nombre_usuario}")
