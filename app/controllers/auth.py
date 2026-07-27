@@ -95,19 +95,6 @@ def olvide_contrasena():
             ).first()
 
         if usuario is not None:
-            bitacora = Bitacora(
-                id_usuario=usuario.id_usuario,
-                accion="solicitud_restablecer_contrasena",
-                descripcion=(
-                    f"Solicitud de restablecimiento de contraseña para la cuenta "
-                    f"'{usuario.nombre_usuario}'."
-                ),
-                tabla_afectada="usuarios",
-                registro_id=usuario.id_usuario,
-            )
-            db.session.add(bitacora)
-            db.session.commit()
-
             if usuario.email:
                 token = _serializer_restablecer().dumps(usuario.id_usuario)
                 enlace = url_for("auth.restablecer_contrasena", token=token, _external=True)
@@ -118,7 +105,40 @@ def olvide_contrasena():
                     f"{enlace}\n\n"
                     "Si tú no solicitaste esto, puedes ignorar este correo."
                 )
-                enviar_correo(usuario.email, "Restablecer tu contraseña — S.A.D.E.", cuerpo)
+                exito, error = enviar_correo(
+                    usuario.email, "Restablecer tu contraseña — S.A.D.E.", cuerpo
+                )
+
+                if not exito:
+                    print(
+                        f"[olvide_contrasena] Error al enviar correo a "
+                        f"{usuario.email}: {error}"
+                    )
+
+                resultado = (
+                    "correo enviado"
+                    if exito
+                    else f"correo fallido ({error})" if error else "correo fallido"
+                )
+                descripcion = (
+                    f"Solicitud de restablecimiento de contraseña para la cuenta "
+                    f"'{usuario.nombre_usuario}': {resultado}."
+                )
+            else:
+                descripcion = (
+                    f"Solicitud de restablecimiento de contraseña para la cuenta "
+                    f"'{usuario.nombre_usuario}': sin correo registrado, no se envió correo."
+                )
+
+            bitacora = Bitacora(
+                id_usuario=usuario.id_usuario,
+                accion="solicitud_restablecer_contrasena",
+                descripcion=descripcion,
+                tabla_afectada="usuarios",
+                registro_id=usuario.id_usuario,
+            )
+            db.session.add(bitacora)
+            db.session.commit()
 
         return redirect(url_for("auth.solicitud_enviada"))
 
