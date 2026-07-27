@@ -8,30 +8,23 @@
 <p class="page-title mb-4">Viajes activos</p>
 
 {% if viajes %}
-<div class="table-responsive">
-    <table class="table table-striped align-middle">
-        <thead>
-            <tr>
-                <th>Conductor</th>
-                <th>Vehículo</th>
-                <th>Origen</th>
-                <th>Destino</th>
-                <th>Salida</th>
-                <th>ETA</th>
-                <th>Estado</th>
-                <th class="text-end">Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
+<div class="row g-3">
+    <div class="col-lg-5">
+        <!--
+        Nota de diseño: la columna "Acciones" (Confirmar llegada / Cerrar
+        forzado) que tenía esta lista antes del panel de detalle se quitó de
+        aquí; los dos botones ahora viven solo en el panel de la derecha.
+        Con el layout de dos columnas ya no hay espacio horizontal cómodo
+        para una tabla ancha con botones, y duplicarlos en ambos lados
+        invitaría a hacer clic dos veces sobre el mismo viaje sin querer.
+        -->
+        <div class="d-flex flex-column gap-2">
             {% for viaje in viajes %}
-            <tr>
-                <td>{{ viaje.conductor.nombre }}</td>
-                <td>{{ viaje.vehiculo.placas }}</td>
-                <td>{{ viaje.origen }}</td>
-                <td>{{ viaje.destino }}</td>
-                <td>{{ viaje.hora_salida.strftime('%d/%m/%Y %H:%M') }}</td>
-                <td>{{ viaje.eta.strftime('%d/%m/%Y %H:%M') }}</td>
-                <td>
+            <a
+                href="{{ url_for('admin.viajes_lista', id_viaje=viaje.id_viaje) }}"
+                class="card p-3 text-decoration-none detail-list-item {{ 'active' if viaje_seleccionado and viaje.id_viaje == viaje_seleccionado.id_viaje }}"
+            >
+                <div class="d-flex justify-content-between align-items-start">
                     {% if viaje.estado == 'emergencia' %}
                         <span class="badge-status danger">Emergencia</span>
                     {% elif viaje.estado == 'alerta' %}
@@ -39,35 +32,97 @@
                     {% else %}
                         <span class="badge-status success">Activo</span>
                     {% endif %}
-                </td>
-                <td class="text-end">
-                    {% if viaje.estado in ('activo', 'alerta', 'emergencia') %}
-                        <form
-                            method="POST"
-                            action="{{ url_for('admin.viajes_confirmar_llegada_manual', id_viaje=viaje.id_viaje) }}"
-                            class="d-inline"
-                            onsubmit="return confirm('¿Confirmar la llegada de este viaje manualmente? Esta acción no se puede deshacer.');"
-                        >
-                            <button type="submit" class="btn btn-sm btn-outline-secondary">
-                                Confirmar llegada (manual)
-                            </button>
-                        </form>
-                        <form
-                            method="POST"
-                            action="{{ url_for('admin.viajes_cerrar_forzado', id_viaje=viaje.id_viaje) }}"
-                            class="d-inline"
-                            onsubmit="return confirm('¿Cerrar este viaje de forma forzada? Úsalo solo si no se puede resolver de otra forma. Esta acción no se puede deshacer.');"
-                        >
-                            <button type="submit" class="btn btn-sm btn-outline-secondary">
-                                Cerrar viaje (forzado)
-                            </button>
-                        </form>
-                    {% endif %}
-                </td>
-            </tr>
+                    <span class="text-help">ETA {{ viaje.eta.strftime('%d/%m %H:%M') }}</span>
+                </div>
+                <p class="mb-0 mt-2 section-subtitle">{{ viaje.conductor.nombre }}</p>
+                <p class="text-help mb-0">{{ viaje.origen }} → {{ viaje.destino }}</p>
+            </a>
             {% endfor %}
-        </tbody>
-    </table>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        {% if viaje_seleccionado %}
+        <div class="card p-4">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <p class="section-subtitle mb-0">{{ viaje_seleccionado.origen }} → {{ viaje_seleccionado.destino }}</p>
+                {% if viaje_seleccionado.estado == 'emergencia' %}
+                    <span class="badge-status danger">Emergencia</span>
+                {% elif viaje_seleccionado.estado == 'alerta' %}
+                    <span class="badge-status warning">En alerta</span>
+                {% else %}
+                    <span class="badge-status success">Activo</span>
+                {% endif %}
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-6">
+                    <p class="text-help mb-0">Conductor</p>
+                    <p class="mb-0">{{ viaje_seleccionado.conductor.nombre }}</p>
+                </div>
+                <div class="col-6">
+                    <p class="text-help mb-0">Vehículo</p>
+                    <p class="mb-0">{{ viaje_seleccionado.vehiculo.placas }}</p>
+                </div>
+                <div class="col-6">
+                    <p class="text-help mb-0">Hora de salida</p>
+                    <p class="mb-0">{{ viaje_seleccionado.hora_salida.strftime('%d/%m/%Y %H:%M') }}</p>
+                </div>
+                <div class="col-6">
+                    <p class="text-help mb-0">ETA</p>
+                    <p class="mb-0">{{ viaje_seleccionado.eta.strftime('%d/%m/%Y %H:%M') }}</p>
+                </div>
+                <div class="col-6">
+                    <p class="text-help mb-0">Hora actual</p>
+                    <p class="mb-0">{{ detalle.ahora.strftime('%d/%m/%Y %H:%M') }}</p>
+                </div>
+                <div class="col-6">
+                    <p class="text-help mb-0">Retraso</p>
+                    <p class="mb-0">
+                        {% if detalle.retraso_minutos is not none %}
+                            <span class="badge-status warning">{{ detalle.retraso_minutos }} min</span>
+                        {% else %}
+                            <span class="badge-status success">Sin retraso</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+
+            <p class="section-subtitle mb-2">Línea de tiempo</p>
+            <ul class="list-unstyled mb-3">
+                {% for evento in detalle.eventos %}
+                <li class="mb-2">
+                    <span class="text-help">{{ evento.hora.strftime('%d/%m/%Y %H:%M') }}</span>
+                    — {{ evento.texto }}
+                </li>
+                {% endfor %}
+            </ul>
+
+            {% if viaje_seleccionado.estado in ('activo', 'alerta', 'emergencia') %}
+            <div class="d-flex gap-2">
+                <form
+                    method="POST"
+                    action="{{ url_for('admin.viajes_confirmar_llegada_manual', id_viaje=viaje_seleccionado.id_viaje) }}"
+                    onsubmit="return confirm('¿Confirmar la llegada de este viaje manualmente? Esta acción no se puede deshacer.');"
+                >
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">
+                        Confirmar llegada (manual)
+                    </button>
+                </form>
+                <form
+                    method="POST"
+                    action="{{ url_for('admin.viajes_cerrar_forzado', id_viaje=viaje_seleccionado.id_viaje) }}"
+                    onsubmit="return confirm('¿Cerrar este viaje de forma forzada? Úsalo solo si no se puede resolver de otra forma. Esta acción no se puede deshacer.');"
+                >
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">
+                        Cerrar viaje (forzado)
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
 </div>
 {% else %}
 <p class="text-muted">No hay viajes activos, en alerta ni en emergencia en este momento.</p>

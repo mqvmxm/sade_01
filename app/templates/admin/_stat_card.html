@@ -1,0 +1,17 @@
+{#
+    Tarjeta de estadistica reutilizable (Dashboard, Alertas, y futuras
+    pantallas que necesiten el mismo patron de 4 tarjetas de resumen).
+    Uso: {% from 'admin/_stat_card.html' import stat_card %}
+         {{ stat_card('Etiqueta', valor, 'Descripcion corta', 'success') }}
+    color acepta: success | warning | danger | neutral (mismo vocabulario
+    que badge-status en base.html).
+#}
+{% macro stat_card(etiqueta, valor, descripcion, color='neutral') %}
+<div class="card stat-card-{{ color }} h-100">
+    <div class="card-body">
+        <p class="stat-card-label mb-1">{{ etiqueta }}</p>
+        <p class="stat-card-value mb-1">{{ valor }}</p>
+        <p class="text-help mb-0">{{ descripcion }}</p>
+    </div>
+</div>
+{% endmacro %}

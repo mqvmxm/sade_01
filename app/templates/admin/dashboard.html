@@ -1,4 +1,5 @@
 {% extends 'admin/_layout.html' %}
+{% from 'admin/_stat_card.html' import stat_card %}
 
 {% block title %}Panel de administrador — S.A.D.E.{% endblock %}
 
@@ -6,5 +7,86 @@
 
 {% block admin_content %}
 <p class="page-title mb-1">Bienvenido, {{ current_user.nombre }}</p>
-<p class="text-help">Panel de administrador — S.A.D.E.</p>
+<p class="text-help mb-4">Panel de administrador — S.A.D.E.</p>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        {{ stat_card('Operación normal', conteos.activo, 'Viajes activos sin incidentes', 'success') }}
+    </div>
+    <div class="col-md-3">
+        {{ stat_card('Retraso detectado', conteos.alerta, 'Viajes que superaron su ETA', 'warning') }}
+    </div>
+    <div class="col-md-3">
+        {{ stat_card('Emergencia activa', conteos.emergencia, 'Avisos de pánico sin cerrar', 'danger') }}
+    </div>
+    <div class="col-md-3">
+        {{ stat_card('Licencia vencida', conteos.licencia_vencida, 'Conductores con licencia expirada', 'neutral') }}
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <p class="section-subtitle mb-2">Viajes en curso</p>
+        {% if viajes_en_curso %}
+        <div class="table-responsive">
+            <table class="table table-striped align-middle">
+                <thead>
+                    <tr>
+                        <th>Estado</th>
+                        <th>Conductor</th>
+                        <th>Ruta</th>
+                        <th>ETA</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for viaje in viajes_en_curso %}
+                    <tr>
+                        <td>
+                            {% if viaje.estado == 'emergencia' %}
+                                <span class="badge-status danger">Emergencia</span>
+                            {% elif viaje.estado == 'alerta' %}
+                                <span class="badge-status warning">En alerta</span>
+                            {% else %}
+                                <span class="badge-status success">Activo</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ viaje.conductor.nombre }}</td>
+                        <td>{{ viaje.origen }} → {{ viaje.destino }}</td>
+                        <td>{{ viaje.eta.strftime('%d/%m/%Y %H:%M') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">No hay viajes en curso en este momento.</p>
+        {% endif %}
+    </div>
+
+    <div class="col-lg-4">
+        <p class="section-subtitle mb-2">Alertas recientes</p>
+        {% if alertas_recientes %}
+        <div class="d-flex flex-column gap-2">
+            {% for alerta in alertas_recientes %}
+            <div class="card p-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    {% if alerta.tipo == 'retraso' %}
+                        <span class="badge-status warning">Retraso</span>
+                    {% elif alerta.tipo == 'panico' %}
+                        <span class="badge-status danger">Pánico</span>
+                    {% else %}
+                        <span class="badge-status danger">Licencia vencida</span>
+                    {% endif %}
+                    <span class="text-help">{{ alerta.generada_en.strftime('%d/%m/%Y %H:%M') }}</span>
+                </div>
+                <p class="mb-0 mt-2">{{ alerta.conductor.nombre }}</p>
+                <p class="text-help mb-0">{{ alerta.mensaje }}</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted">No hay alertas registradas todavía.</p>
+        {% endif %}
+    </div>
+</div>
 {% endblock %}

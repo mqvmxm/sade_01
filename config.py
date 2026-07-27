@@ -48,3 +48,18 @@ class Config:
         "1",
         "yes",
     )
+
+    # Credenciales de correo para el flujo de "olvidé mi contraseña" (RF-1).
+    # Con EMAIL_SIMULATE=True (default), app/services/correo.py no se conecta
+    # a ningún servidor SMTP real: solo imprime el envío simulado por
+    # consola, igual que SIMULATE_TWILIO hace con las notificaciones.
+    EMAIL_SIMULATE = os.environ.get("EMAIL_SIMULATE", "True").strip().lower() in (
+        "true",
+        "1",
+        "yes",
+    )
+    EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+    EMAIL_PORT = os.environ.get("EMAIL_PORT", "587")
+    EMAIL_USER = os.environ.get("EMAIL_USER", "")
+    EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD", "")
+    EMAIL_FROM = os.environ.get("EMAIL_FROM", "")

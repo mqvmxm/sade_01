@@ -13,6 +13,47 @@
 </script>
 {% endblock %}
 
+{% block extra_head %}
+<style>
+    .status-card {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        border-radius: 12px;
+        padding: 0.85rem 1rem;
+    }
+
+    .status-card-success {
+        background-color: var(--color-success-bg);
+    }
+
+    .status-card-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background-color: var(--color-success);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .status-card-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--color-text);
+    }
+
+    .status-card-subtitle {
+        font-size: 10.5px;
+        color: var(--color-text-secondary);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
@@ -73,6 +114,18 @@
                     <button type="submit" class="btn btn-primary w-100">Confirmar llegada</button>
                 </form>
             </div>
+
+            {% if viaje_activo.estado != 'emergencia' %}
+                <div class="status-card status-card-success mt-3">
+                    <span class="status-card-icon">✓</span>
+                    <div>
+                        <p class="status-card-title mb-0">Monitoreo automático activo</p>
+                        <p class="status-card-subtitle mb-0">
+                            El sistema revisa tu progreso cada minuto. No necesitas hacer nada mientras conduces.
+                        </p>
+                    </div>
+                </div>
+            {% endif %}
 
             <p class="text-help mt-4 mb-2">¿Necesitas ayuda discretamente?</p>
             <div
@@ -162,6 +215,16 @@
             </script>
 
         {% else %}
+            <div class="status-card status-card-success mb-3">
+                <span class="status-card-icon">✓</span>
+                <div>
+                    <p class="status-card-title mb-0">Licencia vigente</p>
+                    <p class="status-card-subtitle mb-0">
+                        Vence el {{ conductor.fecha_vencimiento_lic.strftime('%d/%m/%Y') }}
+                    </p>
+                </div>
+            </div>
+
             <div class="card p-4">
                 <p class="section-subtitle mb-3">Registrar salida</p>
                 <form method="POST" action="{{ url_for('conductor.viajes_nuevo') }}">

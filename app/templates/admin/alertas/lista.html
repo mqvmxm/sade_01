@@ -1,4 +1,5 @@
 {% extends 'admin/_layout.html' %}
+{% from 'admin/_stat_card.html' import stat_card %}
 
 {% block title %}Alertas — S.A.D.E.{% endblock %}
 
@@ -7,46 +8,149 @@
 {% block admin_content %}
 <p class="page-title mb-4">Alertas</p>
 
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        {{ stat_card('Hoy', conteos.hoy, 'Alertas generadas hoy', 'neutral') }}
+    </div>
+    <div class="col-md-3">
+        {{ stat_card('Sin atender', conteos.sin_atender, 'Pendientes de revisión', 'warning') }}
+    </div>
+    <div class="col-md-3">
+        {{ stat_card('Retrasos', conteos.retrasos_mes, 'Este mes', 'warning') }}
+    </div>
+    <div class="col-md-3">
+        {{ stat_card('Emergencias', conteos.emergencias_mes, 'Este mes', 'danger') }}
+    </div>
+</div>
+
 {% if alertas %}
-<div class="table-responsive">
-    <table class="table table-striped align-middle">
-        <thead>
-            <tr>
-                <th>Tipo</th>
-                <th>Mensaje</th>
-                <th>Conductor</th>
-                <th>Ruta</th>
-                <th>Generada</th>
-                <th class="text-end">Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="d-flex flex-column gap-2">
             {% for alerta in alertas %}
-            <tr>
-                <td>
+            <a
+                href="{{ url_for('admin.alertas_lista', id_alerta=alerta.id_alerta) }}"
+                class="card p-3 text-decoration-none detail-list-item {{ 'active' if alerta_seleccionada and alerta.id_alerta == alerta_seleccionada.id_alerta }}"
+            >
+                <div class="d-flex justify-content-between align-items-start">
                     {% if alerta.tipo == 'retraso' %}
                         <span class="badge-status warning">Retraso</span>
                     {% elif alerta.tipo == 'panico' %}
                         <span class="badge-status danger">Pánico</span>
-                    {% elif alerta.tipo == 'licencia_vencida' %}
+                    {% else %}
                         <span class="badge-status danger">Licencia vencida</span>
                     {% endif %}
-                </td>
-                <td>{{ alerta.mensaje }}</td>
-                <td>{{ alerta.conductor.nombre }}</td>
-                <td>{{ alerta.viaje.origen }} → {{ alerta.viaje.destino }}</td>
-                <td>{{ alerta.generada_en.strftime('%d/%m/%Y %H:%M') }}</td>
-                <td class="text-end">
-                    <form method="POST" action="{{ url_for('admin.alertas_atender', id_alerta=alerta.id_alerta) }}">
-                        <button type="submit" class="btn btn-sm btn-outline-secondary">
-                            Marcar como atendida
-                        </button>
-                    </form>
-                </td>
-            </tr>
+                    <span class="text-help">{{ alerta.generada_en.strftime('%d/%m %H:%M') }}</span>
+                </div>
+                <p class="mb-0 mt-2 section-subtitle">{{ alerta.conductor.nombre }}</p>
+                <p class="text-help mb-0">{{ alerta.mensaje }}</p>
+            </a>
             {% endfor %}
-        </tbody>
-    </table>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        {% if alerta_seleccionada %}
+        <div class="card p-4">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                {% if alerta_seleccionada.tipo == 'retraso' %}
+                    <span class="badge-status warning">Retraso</span>
+                {% elif alerta_seleccionada.tipo == 'panico' %}
+                    <span class="badge-status danger">Pánico</span>
+                {% else %}
+                    <span class="badge-status danger">Licencia vencida</span>
+                {% endif %}
+            </div>
+
+            <p class="mb-3">{{ alerta_seleccionada.mensaje }}</p>
+
+            <div class="row g-3 mb-3">
+                <div class="col-6">
+                    <p class="text-help mb-0">Conductor</p>
+                    <p class="mb-0">{{ alerta_seleccionada.conductor.nombre }}</p>
+                </div>
+                <div class="col-6">
+                    <p class="text-help mb-0">Vehículo</p>
+                    <p class="mb-0">
+                        {{ alerta_seleccionada.viaje.vehiculo.placas if alerta_seleccionada.viaje else '—' }}
+                    </p>
+                </div>
+                <div class="col-6">
+                    <p class="text-help mb-0">Ruta</p>
+                    <p class="mb-0">
+                        {% if alerta_seleccionada.viaje %}
+                            {{ alerta_seleccionada.viaje.origen }} → {{ alerta_seleccionada.viaje.destino }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-6">
+                    <p class="text-help mb-0">ETA configurada</p>
+                    <p class="mb-0">
+                        {{ alerta_seleccionada.viaje.eta.strftime('%d/%m/%Y %H:%M') if alerta_seleccionada.viaje else '—' }}
+                    </p>
+                </div>
+                <div class="col-6">
+                    <p class="text-help mb-0">Hora de la alerta</p>
+                    <p class="mb-0">{{ alerta_seleccionada.generada_en.strftime('%d/%m/%Y %H:%M') }}</p>
+                </div>
+            </div>
+
+            {% if detalle.emergencia %}
+            <!-- Solo aplica a alertas tipo='panico': retraso y licencia_vencida
+                 nunca disparan Twilio (ver app/controllers/emergencia.py), así
+                 que esta sección se omite por completo en esos casos en vez de
+                 mostrarse vacía. -->
+            <p class="section-subtitle mb-2">Notificaciones enviadas</p>
+            <div class="row g-3 mb-3">
+                <div class="col-6">
+                    <p class="text-help mb-0">WhatsApp</p>
+                    {% if detalle.emergencia.estado_envio_ws == 'enviado' %}
+                        <span class="badge-status success">Enviado</span>
+                    {% elif detalle.emergencia.estado_envio_ws == 'fallido' %}
+                        <span class="badge-status danger">Fallido</span>
+                    {% else %}
+                        <span class="badge-status neutral">Pendiente</span>
+                    {% endif %}
+                </div>
+                <div class="col-6">
+                    <p class="text-help mb-0">SMS</p>
+                    {% if detalle.emergencia.estado_envio_sms == 'enviado' %}
+                        <span class="badge-status success">Enviado</span>
+                    {% elif detalle.emergencia.estado_envio_sms == 'fallido' %}
+                        <span class="badge-status danger">Fallido</span>
+                    {% else %}
+                        <span class="badge-status neutral">Pendiente</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="d-flex gap-2 align-items-center">
+                <form method="POST" action="{{ url_for('admin.alertas_atender', id_alerta=alerta_seleccionada.id_alerta) }}">
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">
+                        Marcar como atendida
+                    </button>
+                </form>
+                {% if alerta_seleccionada.viaje %}
+                <!-- Si el viaje asociado ya se cerró, no aparecerá en la lista
+                     de Viajes activos (misma limitación conocida que el link
+                     "Ver detalle" del Historial: no hay página de detalle para
+                     viajes cerrados). El link se muestra igual porque la
+                     mayoría de las alertas sin atender son de viajes todavía
+                     en curso. -->
+                <a
+                    href="{{ url_for('admin.viajes_lista', id_viaje=alerta_seleccionada.viaje.id_viaje) }}"
+                    class="btn btn-sm btn-outline-secondary"
+                >
+                    Ver viaje completo
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
 </div>
 {% else %}
 <p class="text-muted">No hay alertas pendientes.</p>

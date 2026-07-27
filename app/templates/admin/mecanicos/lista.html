@@ -1,0 +1,47 @@
+{% extends 'admin/_layout.html' %}
+
+{% block title %}Mecánicos — S.A.D.E.{% endblock %}
+
+{% block active_page %}mecanicos{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <p class="page-title mb-0">Mecánicos</p>
+    <a href="{{ url_for('admin.mecanicos_nuevo') }}" class="btn btn-primary">
+        + Nuevo mecánico
+    </a>
+</div>
+
+{% if mecanicos %}
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Usuario</th>
+                <th>Correo</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for mecanico in mecanicos %}
+            <tr>
+                <td>{{ mecanico.nombre }}</td>
+                <td>{{ mecanico.nombre_usuario }}</td>
+                <td>{{ mecanico.email or '—' }}</td>
+                <td>
+                    {% if mecanico.activo %}
+                        <span class="badge-status success">Activo</span>
+                    {% else %}
+                        <span class="badge-status neutral">Inactivo</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No hay mecánicos registrados todavía.</p>
+{% endif %}
+{% endblock %}

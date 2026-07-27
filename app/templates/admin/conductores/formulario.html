@@ -8,10 +8,10 @@
 {% block active_page %}conductores{% endblock %}
 
 {% block admin_content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <p class="page-title mb-4">{{ 'Editar conductor' if es_edicion else 'Nuevo conductor' }}</p>
+<p class="page-title mb-4">{{ 'Editar conductor' if es_edicion else 'Nuevo conductor' }}</p>
 
+<div class="row g-4">
+    <div class="col-lg-8">
         <form
             method="POST"
             action="{{ url_for('admin.conductores_editar', id_conductor=id_conductor) if es_edicion else url_for('admin.conductores_nuevo') }}"
@@ -38,6 +38,55 @@
                     required
                 >
             </div>
+            {% if not es_edicion %}
+            <div class="mb-3">
+                <label for="nombre_usuario" class="form-label">Nombre de usuario (cuenta de acceso)</label>
+                <input
+                    type="text"
+                    class="form-control"
+                    id="nombre_usuario"
+                    name="nombre_usuario"
+                    value="{{ c.nombre_usuario }}"
+                    required
+                >
+            </div>
+            <div class="mb-3">
+                <label for="contrasena" class="form-label">Contraseña temporal</label>
+                <input
+                    type="password"
+                    class="form-control"
+                    id="contrasena"
+                    name="contrasena"
+                    minlength="8"
+                    required
+                >
+                <div class="text-help mt-1">
+                    Mínimo 8 caracteres. El conductor podrá cambiarla después con
+                    "¿Olvidaste tu contraseña?".
+                </div>
+            </div>
+            {% endif %}
+            <div class="mb-3">
+                <label for="email" class="form-label">Correo electrónico (cuenta de acceso)</label>
+                <input
+                    type="email"
+                    class="form-control"
+                    id="email"
+                    name="email"
+                    value="{{ c.email }}"
+                    placeholder="correo@ejemplo.com"
+                    {{ 'required' if not es_edicion }}
+                >
+                <div class="text-help mt-1">
+                    {% if es_edicion %}
+                    Se usa para "¿Olvidaste tu contraseña?". Solo se guarda si este conductor ya
+                    tiene una cuenta de usuario vinculada.
+                    {% else %}
+                    Se usa para "¿Olvidaste tu contraseña?" de la cuenta que se creará junto con
+                    este conductor.
+                    {% endif %}
+                </div>
+            </div>
             <div class="mb-3">
                 <label for="num_licencia" class="form-label">No. de licencia</label>
                 <input
@@ -59,6 +108,10 @@
                     value="{{ c.fecha_vencimiento_lic }}"
                     required
                 >
+            </div>
+            <div class="alert alert-info mb-3" style="font-size: 11px;">
+                ℹ El sistema bloqueará automáticamente el registro de viajes si esta licencia
+                se encuentra vencida al momento del despacho.
             </div>
             <div class="mb-3">
                 <label for="contacto_emergencia" class="form-label">Contacto de emergencia</label>
@@ -92,6 +145,21 @@
                 </a>
             </div>
         </form>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="help-panel">
+            <p class="help-panel-title mb-0">¿Por qué pedimos esto?</p>
+            <p>
+                La validación de licencia es una de las funcionalidades centrales de S.A.D.E.
+                El sistema compara automáticamente la fecha de vencimiento contra la fecha
+                actual antes de permitir cualquier salida a ruta.
+            </p>
+            <p>
+                El nombre de usuario y contraseña permiten que el conductor acceda desde su
+                propio teléfono.
+            </p>
+        </div>
     </div>
 </div>
 {% endblock %}

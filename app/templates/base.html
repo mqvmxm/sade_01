@@ -304,6 +304,88 @@
             padding: 2rem 2.5rem;
             max-width: 1100px;
         }
+
+        /* Tarjeta de estadistica reutilizable (templates/admin/_stat_card.html):
+           mismo componente .card de siempre, con una barra de acento a la
+           izquierda que reutiliza los 4 colores de badge-status. */
+        .stat-card-label {
+            font-size: 10.5px;
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .stat-card-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--color-text);
+            line-height: 1.2;
+        }
+
+        .stat-card-success { border-left: 4px solid var(--color-success); }
+        .stat-card-warning { border-left: 4px solid var(--color-warning); }
+        .stat-card-danger  { border-left: 4px solid var(--color-danger); }
+        .stat-card-neutral { border-left: 4px solid var(--color-neutral); }
+
+        /* Items seleccionables de las listas en las vistas de dos columnas
+           (lista + detalle: Viajes activos, Alertas). Reutilizado por ambas. */
+        .detail-list-item {
+            display: block;
+            color: inherit;
+            transition: border-color 0.15s ease, background-color 0.15s ease;
+        }
+
+        .detail-list-item:hover {
+            color: inherit;
+            border-color: var(--color-brand);
+        }
+
+        .detail-list-item.active {
+            border-color: var(--color-brand);
+            background-color: rgba(23, 66, 63, 0.06);
+        }
+
+        /* Placa de vehiculo como "pill" oscura (tabla de Vehiculos), en vez
+           de texto plano. Reutiliza --color-text, que ya es el mismo #1c1c21. */
+        .placa-pill {
+            display: inline-block;
+            background-color: var(--color-text);
+            color: #fff;
+            font-weight: 600;
+            font-size: 10.5px;
+            padding: 0.28em 0.65em;
+            border-radius: 5px;
+        }
+
+        /* Panel lateral "¿Por qué pedimos esto?" / "Sobre el estado del
+           vehiculo" en los formularios de registro. Reutiliza los tokens de
+           success (fondo suave + verde de marca) ya establecidos, en vez de
+           introducir un verde nuevo solo para este panel. */
+        .help-panel {
+            background-color: var(--color-success-bg);
+            border-radius: 14px;
+            padding: 1.75rem;
+            height: fit-content;
+        }
+
+        .help-panel-title {
+            color: var(--color-brand);
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 0.9rem;
+        }
+
+        .help-panel p {
+            color: var(--color-text-secondary);
+            font-size: 11.5px;
+            line-height: 1.6;
+            margin-bottom: 0.9rem;
+        }
+
+        .help-panel p:last-child {
+            margin-bottom: 0;
+        }
     </style>
     {% block extra_head %}{% endblock %}
 </head>

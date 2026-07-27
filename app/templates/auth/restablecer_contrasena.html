@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}Restablecer contraseña — S.A.D.E.{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <p class="page-title mb-1">Restablecer contraseña</p>
+        <p class="text-help mb-4">Elige tu nueva contraseña.</p>
+
+        <form method="POST">
+            <div class="mb-3">
+                <label for="nueva_contrasena" class="form-label">Nueva contraseña</label>
+                <input
+                    type="password"
+                    class="form-control"
+                    id="nueva_contrasena"
+                    name="nueva_contrasena"
+                    minlength="8"
+                    required
+                    autofocus
+                >
+            </div>
+            <div class="mb-3">
+                <label for="confirmar_contrasena" class="form-label">Confirmar nueva contraseña</label>
+                <input
+                    type="password"
+                    class="form-control"
+                    id="confirmar_contrasena"
+                    name="confirmar_contrasena"
+                    minlength="8"
+                    required
+                >
+            </div>
+
+            <button type="submit" class="btn btn-primary">Actualizar contraseña</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

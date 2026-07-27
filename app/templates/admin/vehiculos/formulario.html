@@ -8,10 +8,10 @@
 {% block active_page %}vehiculos{% endblock %}
 
 {% block admin_content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <p class="page-title mb-4">{{ 'Editar vehículo' if es_edicion else 'Nuevo vehículo' }}</p>
+<p class="page-title mb-4">{{ 'Editar vehículo' if es_edicion else 'Nuevo vehículo' }}</p>
 
+<div class="row g-4">
+    <div class="col-lg-8">
         <form
             method="POST"
             action="{{ url_for('admin.vehiculos_editar', id_vehiculo=id_vehiculo) if es_edicion else url_for('admin.vehiculos_nuevo') }}"
@@ -102,6 +102,15 @@
                 </select>
                 {% endif %}
             </div>
+            {% else %}
+            <div class="alert alert-success mb-3">
+                <strong>Disponible</strong>
+                <div style="font-size: 11px;">
+                    Todo vehículo nuevo inicia como disponible. El estado "En ruta" se asignará
+                    automáticamente cuando el vehículo tenga un viaje activo asignado por un
+                    conductor.
+                </div>
+            </div>
             {% endif %}
 
             <div class="d-flex gap-2">
@@ -113,6 +122,20 @@
                 </a>
             </div>
         </form>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="help-panel">
+            <p class="help-panel-title mb-0">Sobre el estado del vehículo</p>
+            <p>
+                El sistema administra tres estados posibles: Disponible, En taller y En ruta.
+            </p>
+            <p>
+                Solo Disponible y En taller pueden asignarse manualmente. El estado En ruta lo
+                determina el sistema automáticamente en cuanto existe un viaje activo para esa
+                unidad.
+            </p>
+        </div>
     </div>
 </div>
 {% endblock %}

@@ -1,13 +1,39 @@
 {% extends 'admin/_layout.html' %}
+{% from 'admin/_stat_card.html' import stat_card %}
 
 {% block title %}Vehículos — S.A.D.E.{% endblock %}
 
 {% block active_page %}vehiculos{% endblock %}
 
 {% block admin_content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <p class="page-title mb-0">Vehículos</p>
-    <a href="{{ url_for('admin.vehiculos_nuevo') }}" class="btn btn-primary">
+<p class="page-title mb-4">Vehículos</p>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        {{ stat_card('Total', conteos.total, 'unidades en flota', 'neutral') }}
+    </div>
+    <div class="col-md-3">
+        {{ stat_card('Disponibles', conteos.disponibles, 'listas para asignar', 'neutral') }}
+    </div>
+    <div class="col-md-3">
+        {{ stat_card('En ruta', conteos.en_ruta, 'con viaje activo', 'success') }}
+    </div>
+    <div class="col-md-3">
+        {{ stat_card('En taller', conteos.en_taller, 'en mantenimiento', 'warning') }}
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-4 gap-3">
+    <form method="GET" class="flex-shrink-0" style="width: 300px;">
+        <input
+            type="text"
+            name="buscar"
+            class="form-control"
+            placeholder="🔍 Buscar por placa"
+            value="{{ buscar }}"
+        >
+    </form>
+    <a href="{{ url_for('admin.vehiculos_nuevo') }}" class="btn btn-primary text-nowrap">
         + Nuevo vehículo
     </a>
 </div>
@@ -28,7 +54,7 @@
         <tbody>
             {% for vehiculo in vehiculos %}
             <tr>
-                <td>{{ vehiculo.placas }}</td>
+                <td><span class="placa-pill">{{ vehiculo.placas }}</span></td>
                 <td>{{ vehiculo.marca }}</td>
                 <td>{{ vehiculo.modelo }}</td>
                 <td>{{ vehiculo.anio }}</td>
@@ -48,6 +74,12 @@
                     >
                         Editar
                     </a>
+                    <a
+                        href="{{ url_for('admin.historial', vehiculo=vehiculo.id_vehiculo) }}"
+                        class="btn btn-sm btn-outline-secondary"
+                    >
+                        Historial
+                    </a>
                 </td>
             </tr>
             {% endfor %}
@@ -55,6 +87,12 @@
     </table>
 </div>
 {% else %}
-<p class="text-muted">No hay vehículos registrados todavía.</p>
+<p class="text-muted">
+    {% if buscar %}
+        Ningún vehículo coincide con "{{ buscar }}".
+    {% else %}
+        No hay vehículos registrados todavía.
+    {% endif %}
+</p>
 {% endif %}
 {% endblock %}
