@@ -14,6 +14,8 @@
     }
 
     .login-panel-brand {
+        position: relative;
+        overflow: hidden;
         background-color: var(--color-panel-dark);
         color: #fff;
         flex: 1 1 45%;
@@ -23,29 +25,69 @@
         padding: 4rem;
     }
 
-    .login-panel-brand .brand-mark {
-        width: 48px;
-        height: 48px;
-        border-radius: 10px;
-        background-color: var(--color-brand);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 18px;
-        margin-bottom: 1.5rem;
+    .login-panel-decor {
+        position: absolute;
+        border-radius: 50%;
+        background-color: rgba(255, 255, 255, 0.035);
+        pointer-events: none;
+    }
+
+    .login-panel-decor.c1 { width: 320px; height: 320px; top: -120px; right: -100px; }
+    .login-panel-decor.c2 { width: 220px; height: 220px; bottom: -80px; left: -70px; }
+    .login-panel-decor.c3 { width: 140px; height: 140px; bottom: 30px; right: 30px; }
+
+    .login-panel-content {
+        position: relative;
+        z-index: 1;
     }
 
     .login-panel-brand h1 {
         color: #fff;
-        font-size: 22px;
+        font-size: 48px;
         font-weight: 700;
+        line-height: 1.1;
+        margin-bottom: 0.75rem;
     }
 
-    .login-panel-brand p {
+    .login-panel-subtitle {
         color: #9BA0AA;
-        font-size: 12px;
-        max-width: 26rem;
+        font-size: 14px;
+        line-height: 1.5;
+        max-width: 22rem;
+        margin-bottom: 0;
+    }
+
+    .login-panel-divider {
+        width: 48px;
+        height: 3px;
+        background-color: var(--color-success);
+        border: none;
+        margin: 1.75rem 0;
+    }
+
+    .login-panel-features {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+
+    .login-panel-features li {
+        border-left: 3px solid var(--color-success);
+        padding-left: 1rem;
+    }
+
+    .login-panel-feature-title {
+        font-weight: 700;
+        font-size: 13px;
+        color: #fff;
+    }
+
+    .login-panel-feature-desc {
+        font-size: 11.5px;
+        color: #9BA0AA;
     }
 
     .login-panel-form {
@@ -61,15 +103,43 @@
         width: 100%;
         max-width: 22rem;
     }
+
+    .login-divider {
+        border-top: 1px solid var(--color-card-border);
+        opacity: 1;
+        margin: 1.5rem 0;
+    }
 </style>
 {% endblock %}
 
 {% block body %}
 <div class="login-shell">
     <div class="login-panel-brand d-none d-md-flex">
-        <div class="brand-mark">SD</div>
-        <h1>S.A.D.E.</h1>
-        <p>Sistema de Administración de Disponibilidad y Emergencias — gestión de flota, conductores y viajes en un solo lugar.</p>
+        <div class="login-panel-decor c1"></div>
+        <div class="login-panel-decor c2"></div>
+        <div class="login-panel-decor c3"></div>
+
+        <div class="login-panel-content">
+            <h1>S.A.D.E.</h1>
+            <p class="login-panel-subtitle">Sistema de Administración de Disponibilidad y Emergencias</p>
+
+            <hr class="login-panel-divider">
+
+            <ul class="login-panel-features">
+                <li>
+                    <div class="login-panel-feature-title">Validación automática de licencias</div>
+                    <div class="login-panel-feature-desc">antes de cada salida a ruta</div>
+                </li>
+                <li>
+                    <div class="login-panel-feature-title">Monitoreo de rutas en tiempo real</div>
+                    <div class="login-panel-feature-desc">sin intervención manual</div>
+                </li>
+                <li>
+                    <div class="login-panel-feature-title">Alertas inmediatas ante retrasos</div>
+                    <div class="login-panel-feature-desc">o emergencias en carretera</div>
+                </li>
+            </ul>
+        </div>
     </div>
 
     <div class="login-panel-form">
@@ -81,18 +151,22 @@
 
             <form method="POST">
                 <div class="mb-3">
-                    <label for="nombre_usuario" class="form-label">Usuario</label>
+                    <label for="nombre_usuario" class="form-label">Correo o nombre de usuario</label>
                     <input
                         type="text"
                         class="form-control"
                         id="nombre_usuario"
                         name="nombre_usuario"
+                        placeholder="ejemplo@sade.mx"
                         required
                         autofocus
                     >
                 </div>
                 <div class="mb-3">
-                    <label for="contrasena" class="form-label">Contraseña</label>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label for="contrasena" class="form-label mb-0">Contraseña</label>
+                        <a href="{{ url_for('auth.olvide_contrasena') }}" class="text-help">¿Olvidaste tu contraseña?</a>
+                    </div>
                     <input
                         type="password"
                         class="form-control"
@@ -101,11 +175,15 @@
                         required
                     >
                 </div>
-                <button type="submit" class="btn btn-primary w-100">Entrar</button>
+                <button type="submit" class="btn btn-primary w-100">Iniciar sesión</button>
+                <p class="text-help text-center mt-2 mb-0">
+                    El sistema detectará tu rol automáticamente y te llevará a tu panel correspondiente.
+                </p>
             </form>
-            <div class="text-center mt-3">
-                <a href="{{ url_for('auth.olvide_contrasena') }}" class="text-help">¿Olvidaste tu contraseña?</a>
-            </div>
+
+            <hr class="login-divider">
+
+            <p class="text-help text-center mb-0">¿No tienes cuenta? Contacta a tu administrador</p>
         </div>
     </div>
 </div>
