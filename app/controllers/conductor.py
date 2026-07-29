@@ -10,6 +10,7 @@ from flask_login import current_user, login_required
 from sqlalchemy.exc import IntegrityError
 
 from app import db
+from app.models.alerta import Alerta
 from app.models.vehiculo import Vehiculo
 from app.models.viaje import Viaje
 
@@ -50,6 +51,44 @@ def dashboard():
 
     return render_template(
         "conductor/dashboard.html", conductor=perfil, viaje_activo=viaje_activo
+    )
+
+
+@conductor.route("/historial")
+@conductor_required
+def historial():
+    """Historial de rutas ya cerradas y eventos propios del conductor
+    (responsabilidad del rol conductor: "consultar su propio historial de
+    rutas y eventos registrados").
+
+    SEGURIDAD: filtra SIEMPRE por current_user.conductor.id_conductor. No se
+    acepta ningún id de conductor por query param, form ni ninguna otra
+    vía — un conductor jamás debe poder ver los viajes de otro.
+    """
+    perfil = current_user.conductor
+    if perfil is None:
+        flash("Tu cuenta no tiene un perfil de conductor asociado.", "error")
+        return redirect(url_for("auth.login"))
+
+    viajes = (
+        Viaje.query.filter(
+            Viaje.id_conductor == perfil.id_conductor,
+            Viaje.estado.in_(["completado", "cerrado_admin"]),
+        )
+        .order_by(Viaje.hora_llegada.desc())
+        .all()
+    )
+
+    alertas_por_viaje = {}
+    if viajes:
+        ids_viajes = [viaje.id_viaje for viaje in viajes]
+        for alerta in Alerta.query.filter(Alerta.id_viaje.in_(ids_viajes)).all():
+            alertas_por_viaje.setdefault(alerta.id_viaje, []).append(alerta)
+
+    return render_template(
+        "conductor/historial.html",
+        viajes=viajes,
+        alertas_por_viaje=alertas_por_viaje,
     )
 
 

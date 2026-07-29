@@ -84,7 +84,9 @@
                 <a href="{{ url_for('auth.logout') }}" class="logout-link">Cerrar sesión →</a>
             </div>
         </div>
-        <p class="text-help mb-4">Panel de conductor</p>
+        <p class="text-help mb-4">
+            Panel de conductor · <a href="{{ url_for('conductor.historial') }}">Ver mi historial</a>
+        </p>
 
         {% if not conductor.licencia_vigente() %}
             <div class="card p-4">
