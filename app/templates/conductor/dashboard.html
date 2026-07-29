@@ -51,6 +51,18 @@
         font-size: 10.5px;
         color: var(--color-text-secondary);
     }
+
+    /* Estado de error del aviso silencioso: mismo tono de advertencia que
+       badge-status.warning, para que se distinga del texto normal de un
+       vistazo sin recurrir a sonidos ni alert(). */
+    #tarjeta-aviso-silencioso.aviso-silencioso-error {
+        background-color: var(--color-warning-bg);
+    }
+
+    #tarjeta-aviso-silencioso.aviso-silencioso-error #texto-aviso-silencioso,
+    #tarjeta-aviso-silencioso.aviso-silencioso-error #subtexto-aviso-silencioso {
+        color: var(--color-warning) !important;
+    }
 </style>
 {% endblock %}
 
@@ -164,45 +176,98 @@
                         }
                     }
 
+                    function restaurarTexto() {
+                        texto.textContent = textoOriginal;
+                        subtexto.textContent = subtextoOriginal;
+                        tarjeta.classList.remove('aviso-silencioso-error');
+                    }
+
                     function mostrarConfirmacion() {
+                        tarjeta.classList.remove('aviso-silencioso-error');
                         texto.textContent = 'Aviso enviado';
                         subtexto.textContent = '';
-                        setTimeout(function () {
-                            texto.textContent = textoOriginal;
-                            subtexto.textContent = subtextoOriginal;
-                        }, 4000);
+                        setTimeout(restaurarTexto, 4000);
+                    }
+
+                    function mostrarError() {
+                        tarjeta.classList.add('aviso-silencioso-error');
+                        texto.textContent = 'No se pudo enviar';
+                        subtexto.textContent = 'Intenta de nuevo';
+                        setTimeout(restaurarTexto, 4000);
+                    }
+
+                    function enviarEmergencia(latitud, longitud) {
+                        var datos = new FormData();
+                        if (latitud !== null && longitud !== null) {
+                            datos.append('latitud', latitud);
+                            datos.append('longitud', longitud);
+                        }
+
+                        fetch('{{ url_for("emergencia.activar") }}', {
+                            method: 'POST',
+                            body: datos,
+                        })
+                            .then(function (respuesta) {
+                                if (respuesta.ok) {
+                                    mostrarConfirmacion();
+                                } else {
+                                    mostrarError();
+                                }
+                            })
+                            .catch(function () {
+                                mostrarError();
+                            });
                     }
 
                     function activarEmergencia() {
                         temporizador = null;
 
                         if (!navigator.geolocation) {
+                            // Sin soporte de geolocalización: se manda el aviso
+                            // igual, sin coordenadas, en vez de no hacer nada.
+                            enviarEmergencia(null, null);
                             return;
                         }
 
                         navigator.geolocation.getCurrentPosition(
                             function (posicion) {
-                                var datos = new FormData();
-                                datos.append('latitud', posicion.coords.latitude);
-                                datos.append('longitud', posicion.coords.longitude);
-
-                                fetch('{{ url_for("emergencia.activar") }}', {
-                                    method: 'POST',
-                                    body: datos,
-                                })
-                                    .then(function (respuesta) {
-                                        if (respuesta.ok) {
-                                            mostrarConfirmacion();
-                                        }
-                                    })
-                                    .catch(function () {
-                                        // Falla silenciosa: un error técnico no debe notarse en pantalla.
-                                    });
+                                enviarEmergencia(posicion.coords.latitude, posicion.coords.longitude);
                             },
                             function () {
-                                // Sin permiso o falla de geolocalización: también silencioso.
-                            }
+                                // Permiso denegado, timeout o falla de GPS: el
+                                // aviso se manda igual, sin coordenadas — perder
+                                // la ubicación nunca debe impedir pedir ayuda.
+                                enviarEmergencia(null, null);
+                            },
+                            { timeout: 5000 }
                         );
+                    }
+
+                    var TECLAS_ACTIVACION = ['Enter', ' ', 'Spacebar'];
+                    var manteniendoTecla = false;
+
+                    function manejarKeydown(evento) {
+                        if (TECLAS_ACTIVACION.indexOf(evento.key) === -1) {
+                            return;
+                        }
+                        evento.preventDefault();
+                        // Los eventos keydown se repiten mientras la tecla sigue
+                        // presionada; sin esta bandera, iniciarConteo() se
+                        // reiniciaría en cada repetición y el temporizador de
+                        // 3 segundos nunca llegaría a completarse.
+                        if (manteniendoTecla) {
+                            return;
+                        }
+                        manteniendoTecla = true;
+                        iniciarConteo();
+                    }
+
+                    function manejarKeyup(evento) {
+                        if (TECLAS_ACTIVACION.indexOf(evento.key) === -1) {
+                            return;
+                        }
+                        manteniendoTecla = false;
+                        cancelarConteo();
                     }
 
                     tarjeta.addEventListener('mousedown', iniciarConteo);
@@ -211,6 +276,8 @@
                     tarjeta.addEventListener('mouseleave', cancelarConteo);
                     tarjeta.addEventListener('touchend', cancelarConteo);
                     tarjeta.addEventListener('touchcancel', cancelarConteo);
+                    tarjeta.addEventListener('keydown', manejarKeydown);
+                    tarjeta.addEventListener('keyup', manejarKeyup);
                 })();
             </script>
 
