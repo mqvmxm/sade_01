@@ -498,6 +498,57 @@ def mecanicos_nuevo():
     return render_template("admin/mecanicos/formulario.html", mecanico=None)
 
 
+_DESTINO_POR_ROL_CUENTA = {
+    "mecanico": "admin.mecanicos_lista",
+    "conductor": "admin.conductores_lista",
+}
+
+
+@admin.route("/cuentas/<int:id_usuario>/estado", methods=["POST"])
+@admin_required
+def cuentas_cambiar_estado(id_usuario):
+    """Activa o desactiva una cuenta de usuario (RF-1.4), usada por las listas
+    de Mecánicos y Conductores. Comparte una sola ruta porque el toggle es
+    idéntico para ambos roles; solo cambia a dónde se redirige después.
+
+    Dos protecciones para no dejar el sistema sin nadie que lo administre:
+    un admin no puede desactivar su propia cuenta, y no puede desactivar al
+    último administrador activo que quede (aunque no sea él mismo).
+    """
+    usuario = Usuario.query.get_or_404(id_usuario)
+    destino = _DESTINO_POR_ROL_CUENTA.get(usuario.rol, "admin.dashboard")
+
+    if usuario.id_usuario == current_user.id_usuario:
+        flash("No puedes desactivar tu propia cuenta.", "error")
+        return redirect(url_for(destino))
+
+    if usuario.rol == "admin" and usuario.activo:
+        admins_activos = Usuario.query.filter_by(rol="admin", activo=True).count()
+        if admins_activos <= 1:
+            flash("No puedes desactivar al único administrador activo del sistema.", "error")
+            return redirect(url_for(destino))
+
+    estado_anterior = "activa" if usuario.activo else "inactiva"
+    usuario.activo = not usuario.activo
+    estado_nuevo = "activa" if usuario.activo else "inactiva"
+
+    bitacora = Bitacora(
+        id_usuario=current_user.id_usuario,
+        accion="cambio_estado_cuenta",
+        descripcion=(
+            f"Cuenta '{usuario.nombre_usuario}' cambiada de {estado_anterior} a "
+            f"{estado_nuevo} por {current_user.nombre}."
+        ),
+        tabla_afectada="usuarios",
+        registro_id=usuario.id_usuario,
+    )
+    db.session.add(bitacora)
+    db.session.commit()
+
+    flash(f"Cuenta '{usuario.nombre_usuario}' ahora está {estado_nuevo}.", "success")
+    return redirect(url_for(destino))
+
+
 @admin.route("/vehiculos")
 @admin_required
 def vehiculos_lista():

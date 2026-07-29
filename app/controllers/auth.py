@@ -63,7 +63,16 @@ def login():
             flash("Usuario o contraseña incorrectos", "error")
             return render_template("auth/login.html")
 
-        login_user(usuario)
+        # login_user() devuelve False sin iniciar sesión si Usuario.is_active
+        # es False (cuenta desactivada, ver admin.cuentas_cambiar_estado):
+        # sin este chequeo, el flujo seguiría a _dashboard_redirect() como si
+        # hubiera entrado, y el usuario recién ahí (en el dashboard) se
+        # toparía con el redirect a login de @login_required, sin ningún
+        # mensaje que explique por qué.
+        if not login_user(usuario):
+            flash("Esta cuenta está desactivada. Contacta a un administrador.", "error")
+            return render_template("auth/login.html")
+
         return _dashboard_redirect(usuario)
 
     return render_template("auth/login.html")

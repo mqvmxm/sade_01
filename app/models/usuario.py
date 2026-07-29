@@ -48,6 +48,14 @@ class Usuario(db.Model, UserMixin):
         """Devuelve el identificador que Flask-Login guarda en la sesión."""
         return str(self.id_usuario)
 
+    @property
+    def is_active(self):
+        """Sobreescribe el default de UserMixin (siempre True) para que una
+        cuenta desactivada (activo=False) no pueda iniciar sesión: sin esto,
+        la columna `activo` no tenía ningún efecto real (ver
+        app/controllers/admin.py, cuentas_cambiar_estado)."""
+        return self.activo
+
     def set_password(self, password):
         """Genera y guarda el hash de la contraseña (nunca se almacena en claro)."""
         self.contrasena = generate_password_hash(password)

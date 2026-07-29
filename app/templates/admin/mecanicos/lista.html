@@ -21,6 +21,7 @@
                 <th>Usuario</th>
                 <th>Correo</th>
                 <th>Estado</th>
+                <th class="text-end">Acciones</th>
             </tr>
         </thead>
         <tbody>
@@ -35,6 +36,18 @@
                     {% else %}
                         <span class="badge-status neutral">Inactivo</span>
                     {% endif %}
+                </td>
+                <td class="text-end">
+                    <form
+                        method="POST"
+                        action="{{ url_for('admin.cuentas_cambiar_estado', id_usuario=mecanico.id_usuario) }}"
+                    >
+                        {% if mecanico.activo %}
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Desactivar</button>
+                        {% else %}
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Activar</button>
+                        {% endif %}
+                    </form>
                 </td>
             </tr>
             {% endfor %}
