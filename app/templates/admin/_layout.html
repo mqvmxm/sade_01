@@ -58,6 +58,12 @@
             >
                 Historial
             </a>
+            <a
+                class="admin-nav-link {{ 'active' if self.active_page() == 'bitacora' }}"
+                href="{{ url_for('admin.bitacora_lista') }}"
+            >
+                Bitácora
+            </a>
         </nav>
 
         <div class="admin-sidebar-footer">

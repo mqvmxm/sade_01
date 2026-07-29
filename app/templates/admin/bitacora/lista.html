@@ -1,0 +1,201 @@
+{% extends 'admin/_layout.html' %}
+
+{% block title %}Bitácora — S.A.D.E.{% endblock %}
+
+{% block active_page %}bitacora{% endblock %}
+
+{% block extra_head %}
+<style>
+    .historial-filtros {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .filtro-chip {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        background-color: var(--color-card-bg);
+        border: 1px solid var(--color-card-border);
+        border-radius: 10px;
+        padding: 0.4rem 0.75rem;
+    }
+
+    .filtro-chip-label {
+        font-size: 9.5px;
+        font-weight: 600;
+        color: var(--color-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    .filtro-chip-input {
+        border: none;
+        background: transparent;
+        padding: 0;
+        font-size: 12px;
+        color: var(--color-text);
+        min-width: 9rem;
+    }
+
+    .filtro-chip-input:focus {
+        outline: none;
+        box-shadow: none;
+    }
+
+    .pagina-nav {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .pagina-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        border: 1px solid var(--color-card-border);
+        background-color: var(--color-card-bg);
+        color: var(--color-text);
+        font-size: 11.5px;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    a.pagina-btn:hover {
+        border-color: var(--color-brand);
+        color: var(--color-brand);
+    }
+
+    .pagina-btn.active {
+        background-color: var(--color-brand);
+        border-color: var(--color-brand);
+        color: #fff;
+    }
+
+    .pagina-ellipsis {
+        color: var(--color-text-secondary);
+        font-size: 11.5px;
+        padding: 0 0.15rem;
+    }
+</style>
+{% endblock %}
+
+{% block admin_content %}
+<div class="mb-4">
+    <p class="page-title mb-0">Bitácora</p>
+    <p class="text-help mb-0">Registro técnico de auditoría de acciones del sistema</p>
+</div>
+
+<form method="GET" action="{{ url_for('admin.bitacora_lista') }}" class="historial-filtros">
+    <div class="filtro-chip">
+        <label for="filtro-accion" class="filtro-chip-label">Acción</label>
+        <select class="filtro-chip-input" id="filtro-accion" name="accion">
+            <option value="">Todas</option>
+            {% for accion in acciones_disponibles %}
+                <option value="{{ accion }}" {{ 'selected' if filtros_actuales.get('accion') == accion }}>
+                    {{ accion }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="filtro-chip">
+        <label for="filtro-usuario" class="filtro-chip-label">Usuario</label>
+        <select class="filtro-chip-input" id="filtro-usuario" name="usuario">
+            <option value="">Todos</option>
+            {% for usuario in usuarios %}
+                <option
+                    value="{{ usuario.id_usuario }}"
+                    {{ 'selected' if filtros_actuales.get('usuario') == usuario.id_usuario|string }}
+                >
+                    {{ usuario.nombre }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-sm">Filtrar</button>
+</form>
+
+{% if registros %}
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Usuario</th>
+                <th>Acción</th>
+                <th>Descripción</th>
+                <th>Tabla afectada</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for registro in registros %}
+            <tr>
+                <td>{{ registro.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+                <td>{{ registro.usuario.nombre if registro.usuario else '—' }}</td>
+                <td><span class="badge-status neutral">{{ registro.accion }}</span></td>
+                <td>{{ registro.descripcion }}</td>
+                <td>{{ registro.tabla_afectada }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mt-3">
+    <p class="text-help mb-0">
+        Página {{ pagina }} de {{ total_paginas }} · {{ total_registros }} registro{{ 's' if total_registros != 1 }} en total
+    </p>
+
+    {% if total_paginas > 1 %}
+    <div class="pagina-nav">
+        {% if pagina > 1 %}
+            <a
+                href="{{ url_for('admin.bitacora_lista', pagina=pagina - 1, **filtros_actuales) }}"
+                class="pagina-btn"
+                aria-label="Página anterior"
+            >‹</a>
+        {% endif %}
+
+        {% set ventana = 2 %}
+        {% set paginas_mostradas = [] %}
+        {% for num in range(1, total_paginas + 1) %}
+            {% if num == 1 or num == total_paginas or (num >= pagina - ventana and num <= pagina + ventana) %}
+                {% set _ = paginas_mostradas.append(num) %}
+            {% endif %}
+        {% endfor %}
+
+        {% set anterior = namespace(num=0) %}
+        {% for num in paginas_mostradas %}
+            {% if anterior.num and num - anterior.num > 1 %}
+                <span class="pagina-ellipsis">…</span>
+            {% endif %}
+            {% if num == pagina %}
+                <span class="pagina-btn active">{{ num }}</span>
+            {% else %}
+                <a href="{{ url_for('admin.bitacora_lista', pagina=num, **filtros_actuales) }}" class="pagina-btn">{{ num }}</a>
+            {% endif %}
+            {% set anterior.num = num %}
+        {% endfor %}
+
+        {% if pagina < total_paginas %}
+            <a
+                href="{{ url_for('admin.bitacora_lista', pagina=pagina + 1, **filtros_actuales) }}"
+                class="pagina-btn"
+                aria-label="Página siguiente"
+            >›</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% else %}
+<p class="text-muted">No hay registros que coincidan con los filtros seleccionados.</p>
+{% endif %}
+{% endblock %}

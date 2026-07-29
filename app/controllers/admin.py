@@ -1177,3 +1177,67 @@ def alertas_atender(id_alerta):
 
     flash("Alerta marcada como atendida.", "success")
     return redirect(url_for("admin.alertas_lista"))
+
+
+TAM_PAGINA_BITACORA = 20
+
+
+@admin.route("/bitacora")
+@admin_required
+def bitacora_lista():
+    """Registro técnico de auditoría (RNF-02/RNF-07): todas las acciones que
+    se escriben en Bitacora desde cualquier parte del sistema (altas de
+    cuenta, cambios de estado, reportes de avería, envíos de notificación,
+    reseteos de contraseña, etc.), más recientes primero.
+
+    Distinta de Historial a propósito: Historial es la vista operativa de
+    eventos de viaje (alertas + viajes cerrados) para el monitoreo diario de
+    la flota; Bitácora es el registro técnico de auditoría de acciones de
+    usuarios sobre el sistema. No se fusionan.
+    """
+    query = Bitacora.query.options(joinedload(Bitacora.usuario))
+
+    accion_filtro = request.args.get("accion", "").strip()
+    usuario_filtro = request.args.get("usuario", "").strip()
+
+    if accion_filtro:
+        query = query.filter(Bitacora.accion == accion_filtro)
+    if usuario_filtro:
+        try:
+            query = query.filter(Bitacora.id_usuario == int(usuario_filtro))
+        except ValueError:
+            usuario_filtro = ""
+
+    query = query.order_by(Bitacora.fecha.desc())
+
+    total_registros = query.count()
+    try:
+        pagina = max(1, int(request.args.get("pagina", 1)))
+    except ValueError:
+        pagina = 1
+    total_paginas = max(1, math.ceil(total_registros / TAM_PAGINA_BITACORA))
+    pagina = min(pagina, total_paginas)
+    inicio = (pagina - 1) * TAM_PAGINA_BITACORA
+    registros = query.offset(inicio).limit(TAM_PAGINA_BITACORA).all()
+
+    acciones_disponibles = [
+        fila[0]
+        for fila in db.session.query(Bitacora.accion).distinct().order_by(Bitacora.accion).all()
+    ]
+
+    filtros_actuales = {
+        clave: valor
+        for clave, valor in {"accion": accion_filtro, "usuario": usuario_filtro}.items()
+        if valor
+    }
+
+    return render_template(
+        "admin/bitacora/lista.html",
+        registros=registros,
+        acciones_disponibles=acciones_disponibles,
+        usuarios=Usuario.query.order_by(Usuario.nombre).all(),
+        filtros_actuales=filtros_actuales,
+        pagina=pagina,
+        total_paginas=total_paginas,
+        total_registros=total_registros,
+    )
