@@ -25,6 +25,7 @@
                 method="POST"
                 action="{{ url_for('mecanico.vehiculos_reportar_averia', id_vehiculo=vehiculo.id_vehiculo) }}"
             >
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="mb-3">
                     <label for="descripcion" class="form-label">Descripción técnica de la falla</label>
                     <textarea

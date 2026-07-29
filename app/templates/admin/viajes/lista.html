@@ -105,6 +105,7 @@
                     action="{{ url_for('admin.viajes_confirmar_llegada_manual', id_viaje=viaje_seleccionado.id_viaje) }}"
                     onsubmit="return confirm('¿Confirmar la llegada de este viaje manualmente? Esta acción no se puede deshacer.');"
                 >
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-sm btn-outline-secondary">
                         Confirmar llegada (manual)
                     </button>
@@ -114,6 +115,7 @@
                     action="{{ url_for('admin.viajes_cerrar_forzado', id_viaje=viaje_seleccionado.id_viaje) }}"
                     onsubmit="return confirm('¿Cerrar este viaje de forma forzada? Úsalo solo si no se puede resolver de otra forma. Esta acción no se puede deshacer.');"
                 >
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-sm btn-outline-secondary">
                         Cerrar viaje (forzado)
                     </button>

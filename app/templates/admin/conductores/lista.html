@@ -91,6 +91,7 @@
                             method="POST"
                             action="{{ url_for('admin.cuentas_cambiar_estado', id_usuario=cuenta.id_usuario) }}"
                         >
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             {% if cuenta.activo %}
                                 <button type="submit" class="btn btn-sm btn-outline-secondary">Desactivar</button>
                             {% else %}

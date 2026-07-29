@@ -12,6 +12,7 @@
         <p class="page-title mb-4">Nuevo mecánico</p>
 
         <form method="POST" action="{{ url_for('admin.mecanicos_nuevo') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-3">
                 <label for="nombre" class="form-label">Nombre</label>
                 <input

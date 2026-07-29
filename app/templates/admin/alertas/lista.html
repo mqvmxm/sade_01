@@ -129,6 +129,7 @@
 
             <div class="d-flex gap-2 align-items-center">
                 <form method="POST" action="{{ url_for('admin.alertas_atender', id_alerta=alerta_seleccionada.id_alerta) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-sm btn-outline-secondary">
                         Marcar como atendida
                     </button>

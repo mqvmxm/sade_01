@@ -54,6 +54,7 @@
         </p>
 
         <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-3">
                 <label for="identificador" class="form-label">Correo o nombre de usuario</label>
                 <input

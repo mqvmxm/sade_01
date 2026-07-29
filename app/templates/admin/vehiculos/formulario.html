@@ -16,6 +16,7 @@
             method="POST"
             action="{{ url_for('admin.vehiculos_editar', id_vehiculo=id_vehiculo) if es_edicion else url_for('admin.vehiculos_nuevo') }}"
         >
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-3">
                 <label for="placas" class="form-label">Placas</label>
                 <input

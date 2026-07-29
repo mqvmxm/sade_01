@@ -45,6 +45,7 @@
                             action="{{ url_for('mecanico.vehiculos_cambiar_estado', id_vehiculo=vehiculo.id_vehiculo) }}"
                             class="d-inline-flex align-items-center gap-1"
                         >
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input
                                 type="text"
                                 name="motivo"

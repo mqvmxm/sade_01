@@ -123,6 +123,7 @@
                     method="POST"
                     action="{{ url_for('conductor.viajes_confirmar_llegada', id_viaje=viaje_activo.id_viaje) }}"
                 >
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-primary w-100">Confirmar llegada</button>
                 </form>
             </div>
@@ -203,8 +204,13 @@
                             datos.append('longitud', longitud);
                         }
 
+                        var metaCsrf = document.querySelector('meta[name="csrf-token"]');
+
                         fetch('{{ url_for("emergencia.activar") }}', {
                             method: 'POST',
+                            headers: {
+                                'X-CSRFToken': metaCsrf ? metaCsrf.content : '',
+                            },
                             body: datos,
                         })
                             .then(function (respuesta) {
@@ -295,6 +301,7 @@
             <div class="card p-4">
                 <p class="section-subtitle mb-3">Registrar salida</p>
                 <form method="POST" action="{{ url_for('conductor.viajes_nuevo') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label for="origen" class="form-label">Origen</label>
                         <input
