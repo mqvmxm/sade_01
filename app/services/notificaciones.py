@@ -53,7 +53,7 @@ def generar_mensaje_emergencia(nombre_conductor, latitud, longitud):
     Google Maps roto con "None, None".
     """
     if latitud is None or longitud is None:
-        ubicacion = "Ubicación no disponible (no se pudo obtener el GPS del dispositivo)."
+        ubicacion = "Ubicación no disponible (el conductor no pudo compartir su ubicación)."
     else:
         ubicacion = f"Ubicación: https://maps.google.com/?q={latitud},{longitud}"
 
