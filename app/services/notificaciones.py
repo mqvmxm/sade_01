@@ -45,12 +45,19 @@ def normalizar_numero(numero):
 
 
 def generar_mensaje_emergencia(nombre_conductor, latitud, longitud):
-    """Arma el texto de la notificación: conductor, tipo de aviso y ubicación (RF-4.5)."""
-    link_mapa = f"https://maps.google.com/?q={latitud},{longitud}"
-    return (
-        f"[S.A.D.E.] Aviso silencioso activado por {nombre_conductor}. "
-        f"Ubicación: {link_mapa}"
-    )
+    """Arma el texto de la notificación: conductor, tipo de aviso y ubicación (RF-4.5).
+
+    latitud/longitud pueden venir en None cuando el conductor activó el
+    aviso sin que el navegador lograra obtener su ubicación: en ese caso se
+    avisa que la ubicación no está disponible en vez de armar un link de
+    Google Maps roto con "None, None".
+    """
+    if latitud is None or longitud is None:
+        ubicacion = "Ubicación no disponible (no se pudo obtener el GPS del dispositivo)."
+    else:
+        ubicacion = f"Ubicación: https://maps.google.com/?q={latitud},{longitud}"
+
+    return f"[S.A.D.E.] Aviso silencioso activado por {nombre_conductor}. {ubicacion}"
 
 
 def _simulacion_activa():

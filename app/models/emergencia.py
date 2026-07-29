@@ -16,6 +16,12 @@ class Emergencia(db.Model):
     (RF-4.6) y el estado de envío independiente para WhatsApp (RF-4.3)
     y SMS de respaldo (RF-4.4). `enviado_offline` marca los casos en los
     que la emergencia se registró sin conectividad inmediata.
+
+    latitud/longitud son NULL cuando el conductor activó el aviso sin que
+    el navegador pudiera obtener su ubicación (permiso denegado, GPS sin
+    señal, timeout o dispositivo sin soporte de geolocalización): el aviso
+    de emergencia igual debe registrarse y notificarse, solo que sin
+    coordenadas (ver app/controllers/emergencia.py, activar()).
     """
 
     __tablename__ = "emergencias"
@@ -25,8 +31,8 @@ class Emergencia(db.Model):
     id_conductor = db.Column(
         db.Integer, db.ForeignKey("conductores.id_conductor"), nullable=False
     )
-    latitud = db.Column(db.Float, nullable=False)
-    longitud = db.Column(db.Float, nullable=False)
+    latitud = db.Column(db.Float, nullable=True)
+    longitud = db.Column(db.Float, nullable=True)
     estado_envio_ws = db.Column(db.String(20), nullable=False, default="pendiente")
     estado_envio_sms = db.Column(db.String(20), nullable=False, default="pendiente")
     enviado_offline = db.Column(db.Boolean, nullable=False, default=False)

@@ -44,11 +44,23 @@ def activar():
     if viaje is None:
         return jsonify({"ok": False, "error": "No tienes un viaje en curso."}), 400
 
-    try:
-        latitud = float(request.form.get("latitud", ""))
-        longitud = float(request.form.get("longitud", ""))
-    except ValueError:
-        return jsonify({"ok": False, "error": "Coordenadas GPS inválidas."}), 400
+    # latitud/longitud son opcionales: si el navegador no pudo obtener la
+    # ubicación (permiso denegado, timeout, sin soporte), el frontend manda
+    # el aviso igual mandandolos vacíos, y aquí se guardan como NULL en vez
+    # de rechazar la emergencia — perder la ubicación nunca debe impedir
+    # registrar y notificar el aviso.
+    latitud_texto = request.form.get("latitud", "").strip()
+    longitud_texto = request.form.get("longitud", "").strip()
+
+    if latitud_texto or longitud_texto:
+        try:
+            latitud = float(latitud_texto)
+            longitud = float(longitud_texto)
+        except ValueError:
+            return jsonify({"ok": False, "error": "Coordenadas GPS inválidas."}), 400
+    else:
+        latitud = None
+        longitud = None
 
     registro_emergencia = Emergencia(
         id_viaje=viaje.id_viaje,
@@ -63,15 +75,15 @@ def activar():
 
     viaje.estado = "emergencia"
 
+    ubicacion_texto = (
+        f"({latitud}, {longitud})" if latitud is not None else "ubicación no disponible"
+    )
     alerta = Alerta(
         id_viaje=viaje.id_viaje,
         id_conductor=perfil.id_conductor,
         tipo="panico",
         prioridad=1,
-        mensaje=(
-            f"Emergencia activada por {perfil.nombre} en "
-            f"({latitud}, {longitud})."
-        ),
+        mensaje=f"Emergencia activada por {perfil.nombre} en {ubicacion_texto}.",
         atendida=False,
     )
     db.session.add(alerta)
