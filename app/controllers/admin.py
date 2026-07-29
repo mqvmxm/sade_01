@@ -210,6 +210,33 @@ def _datos_cuenta_mecanico_desde_formulario():
     }
 
 
+def _datos_mecanico_editar_desde_formulario():
+    """Lee y valida los campos editables de una cuenta de mecánico (RF-1.4):
+    nombre, nombre de usuario y correo, todos obligatorios (mismo criterio
+    que el alta). El rol NUNCA se lee del formulario aquí: esta vista no
+    debe poder convertir un mecánico en admin.
+
+    Retorna un dict con nombre/nombre_usuario/email, o None (y ya hizo flash
+    del error) si falta algún campo. La duplicidad de nombre_usuario se deja
+    al IntegrityError del commit, igual que en el resto del módulo.
+    """
+    nombre = request.form.get("nombre", "").strip()
+    nombre_usuario = request.form.get("nombre_usuario", "").strip()
+    email = request.form.get("email", "").strip()
+
+    if not nombre:
+        flash("El nombre es obligatorio.", "error")
+        return None
+    if not nombre_usuario:
+        flash("El nombre de usuario es obligatorio.", "error")
+        return None
+    if not email:
+        flash("El correo electrónico es obligatorio.", "error")
+        return None
+
+    return {"nombre": nombre, "nombre_usuario": nombre_usuario, "email": email}
+
+
 def _datos_vehiculo_desde_formulario():
     """Lee y valida los campos comunes del formulario de vehículo.
 
@@ -495,7 +522,89 @@ def mecanicos_nuevo():
         flash(f"Cuenta de mecánico '{usuario.nombre}' registrada correctamente.", "success")
         return redirect(url_for("admin.mecanicos_lista"))
 
-    return render_template("admin/mecanicos/formulario.html", mecanico=None)
+    return render_template("admin/mecanicos/formulario.html", mecanico=None, id_usuario=None)
+
+
+@admin.route("/mecanicos/<int:id_usuario>/editar", methods=["GET", "POST"])
+@admin_required
+def mecanicos_editar(id_usuario):
+    """Muestra el formulario prellenado y actualiza nombre/usuario/correo de
+    una cuenta de mecánico (RF-1.4), con cambio de contraseña opcional.
+
+    Se filtra por rol='mecanico' al buscar la cuenta (no solo por
+    id_usuario) para que esta vista nunca pueda editar, ni por error de URL,
+    una cuenta de admin o de conductor. El rol tampoco se toca al guardar:
+    este formulario no ofrece ese campo.
+    """
+    mecanico = Usuario.query.filter_by(id_usuario=id_usuario, rol="mecanico").first_or_404()
+
+    if request.method == "POST":
+        datos = _datos_mecanico_editar_desde_formulario()
+        if datos is None:
+            return render_template(
+                "admin/mecanicos/formulario.html",
+                mecanico=request.form,
+                id_usuario=id_usuario,
+            )
+
+        # La nueva contraseña es opcional: un mecánico sin correo registrado
+        # no puede usar "olvidé mi contraseña", así que esta es la única vía
+        # para ayudarlo si la olvida. Vacío = no se toca la actual.
+        nueva_contrasena = request.form.get("nueva_contrasena", "")
+        if nueva_contrasena and len(nueva_contrasena) < 8:
+            flash("La nueva contraseña debe tener al menos 8 caracteres.", "error")
+            return render_template(
+                "admin/mecanicos/formulario.html",
+                mecanico=request.form,
+                id_usuario=id_usuario,
+            )
+
+        for campo, valor in datos.items():
+            setattr(mecanico, campo, valor)
+
+        if nueva_contrasena:
+            mecanico.set_password(nueva_contrasena)
+
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            flash(
+                f"Ya existe una cuenta con el nombre de usuario '{datos['nombre_usuario']}'.",
+                "error",
+            )
+            return render_template(
+                "admin/mecanicos/formulario.html",
+                mecanico=request.form,
+                id_usuario=id_usuario,
+            )
+
+        bitacora = Bitacora(
+            id_usuario=current_user.id_usuario,
+            accion="edicion_cuenta_mecanico",
+            descripcion=(
+                f"Cuenta de mecánico '{mecanico.nombre}' (usuario "
+                f"'{mecanico.nombre_usuario}') editada por {current_user.nombre}"
+                + (" (incluye cambio de contraseña)." if nueva_contrasena else ".")
+            ),
+            tabla_afectada="usuarios",
+            registro_id=mecanico.id_usuario,
+        )
+        db.session.add(bitacora)
+        db.session.commit()
+
+        flash(f"Cuenta de mecánico '{mecanico.nombre}' actualizada correctamente.", "success")
+        return redirect(url_for("admin.mecanicos_lista"))
+
+    return render_template(
+        "admin/mecanicos/formulario.html",
+        mecanico={
+            "nombre": mecanico.nombre,
+            "nombre_usuario": mecanico.nombre_usuario,
+            "email": mecanico.email or "",
+        },
+        id_usuario=id_usuario,
+    )
 
 
 _DESTINO_POR_ROL_CUENTA = {

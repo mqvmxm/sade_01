@@ -38,17 +38,25 @@
                     {% endif %}
                 </td>
                 <td class="text-end">
-                    <form
-                        method="POST"
-                        action="{{ url_for('admin.cuentas_cambiar_estado', id_usuario=mecanico.id_usuario) }}"
-                    >
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        {% if mecanico.activo %}
-                            <button type="submit" class="btn btn-sm btn-outline-secondary">Desactivar</button>
-                        {% else %}
-                            <button type="submit" class="btn btn-sm btn-outline-secondary">Activar</button>
-                        {% endif %}
-                    </form>
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a
+                            href="{{ url_for('admin.mecanicos_editar', id_usuario=mecanico.id_usuario) }}"
+                            class="btn btn-sm btn-outline-secondary"
+                        >
+                            Editar
+                        </a>
+                        <form
+                            method="POST"
+                            action="{{ url_for('admin.cuentas_cambiar_estado', id_usuario=mecanico.id_usuario) }}"
+                        >
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            {% if mecanico.activo %}
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">Desactivar</button>
+                            {% else %}
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">Activar</button>
+                            {% endif %}
+                        </form>
+                    </div>
                 </td>
             </tr>
             {% endfor %}
