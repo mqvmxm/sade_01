@@ -7,9 +7,11 @@ import os
 
 import click
 from apscheduler.schedulers.background import BackgroundScheduler
-from flask import Flask
+from flask import Flask, flash, jsonify, redirect, request, url_for
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
+from flask_wtf import CSRFProtect
+from flask_wtf.csrf import CSRFError
 
 from config import Config
 
@@ -17,6 +19,7 @@ db = SQLAlchemy()
 login_manager = LoginManager()
 login_manager.login_view = "auth.login"
 scheduler = BackgroundScheduler()
+csrf = CSRFProtect()
 
 
 def create_app(config_class=Config):
@@ -30,6 +33,7 @@ def create_app(config_class=Config):
 
     db.init_app(app)
     login_manager.init_app(app)
+    csrf.init_app(app)
 
     from app import models  # noqa: F401
 
@@ -57,8 +61,38 @@ def create_app(config_class=Config):
 
     _iniciar_scheduler(app)
     _registrar_cli(app)
+    _registrar_manejadores_errores(app)
 
     return app
+
+
+def _registrar_manejadores_errores(app):
+    """Da un mensaje claro ante un token CSRF inválido/faltante (formulario
+    expirado, sesión vencida, o solicitud manipulada) en vez de la página de
+    error genérica de Werkzeug para un 400.
+
+    /emergencia/activar se llama por fetch() y espera JSON, no una página
+    HTML con flash + redirect: si ese endpoint tronara con la respuesta HTML
+    genérica, el aviso silencioso se rompería en silencio (el frontend nunca
+    vería el error). Se distingue por prefijo de ruta para responder en el
+    formato que cada cliente espera.
+    """
+
+    @app.errorhandler(CSRFError)
+    def _manejar_error_csrf(error):
+        if request.path.startswith("/emergencia/"):
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Token de seguridad inválido o expirado. Recarga la página e intenta de nuevo.",
+                    }
+                ),
+                400,
+            )
+
+        flash("Tu sesión o el formulario expiraron. Intenta de nuevo.", "error")
+        return redirect(request.referrer or url_for("auth.index"))
 
 
 def _iniciar_scheduler(app):
