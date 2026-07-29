@@ -52,10 +52,12 @@ def index():
 def login():
     """Valida credenciales e inicia sesión (RF-1.2), o muestra el formulario de login."""
     if request.method == "POST":
-        nombre_usuario = request.form.get("nombre_usuario")
+        identificador = request.form.get("nombre_usuario")
         contrasena = request.form.get("contrasena")
 
-        usuario = Usuario.query.filter_by(nombre_usuario=nombre_usuario).first()
+        usuario = Usuario.query.filter(
+            (Usuario.email == identificador) | (Usuario.nombre_usuario == identificador)
+        ).first()
 
         if usuario is None or not usuario.check_password(contrasena):
             flash("Usuario o contraseña incorrectos", "error")
