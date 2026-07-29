@@ -13,6 +13,18 @@
 </script>
 {% endblock %}
 
+{% block extra_head %}
+<style>
+    /* Bootstrap 5.3 fija .card { color: var(--bs-card-color, var(--bs-body-color)) },
+       que NO sigue nuestro data-tema="oscuro": sin esto, estos valores
+       heredan un gris oscuro fijo de Bootstrap y quedan casi invisibles
+       sobre el fondo oscuro de la tarjeta en modo oscuro. */
+    .card dd {
+        color: var(--color-text);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
