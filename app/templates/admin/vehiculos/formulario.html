@@ -7,6 +7,24 @@
 
 {% block active_page %}vehiculos{% endblock %}
 
+{% block extra_head %}
+<style>
+    /* Aviso inline de placa duplicada (ayuda de UX, ver script al final de
+       este formulario): mismo tono danger que ya usan badge-status/flash de
+       error, sin inventar un color nuevo. */
+    #aviso-placa-duplicada {
+        display: none;
+        color: var(--color-danger);
+        font-size: 10.5px;
+        margin-top: 0.35rem;
+    }
+
+    #aviso-placa-duplicada.visible {
+        display: block;
+    }
+</style>
+{% endblock %}
+
 {% block admin_content %}
 <p class="page-title mb-4">{{ 'Editar vehículo' if es_edicion else 'Nuevo vehículo' }}</p>
 
@@ -25,8 +43,10 @@
                     id="placas"
                     name="placas"
                     value="{{ v.placas }}"
+                    autocomplete="off"
                     required
                 >
+                <p id="aviso-placa-duplicada">Ya existe un vehículo con esta placa.</p>
             </div>
             <div class="mb-3">
                 <label for="num_unidad" class="form-label">No. de unidad</label>
@@ -115,7 +135,7 @@
             {% endif %}
 
             <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary" id="boton-guardar-vehiculo">
                     {{ 'Guardar cambios' if es_edicion else 'Registrar vehículo' }}
                 </button>
                 <a href="{{ url_for('admin.vehiculos_lista') }}" class="btn btn-outline-secondary">
@@ -139,4 +159,77 @@
         </div>
     </div>
 </div>
+
+<script>
+    (function () {
+        // Ayuda de UX: avisa si la placa ya existe antes de enviar el
+        // formulario. NO es la validación real -esa sigue siendo el
+        // IntegrityError + rollback del backend al guardar (ver
+        // vehiculos_nuevo/vehiculos_editar en admin.py)-, así que un fallo o
+        // bloqueo de esta consulta nunca debe impedir enviar el formulario.
+        var campoPlacas = document.getElementById('placas');
+        var aviso = document.getElementById('aviso-placa-duplicada');
+        var botonGuardar = document.getElementById('boton-guardar-vehiculo');
+        var idVehiculoActual = {{ id_vehiculo | tojson }};
+        var temporizadorDebounce = null;
+        var idConsulta = 0;
+
+        function ocultarAviso() {
+            aviso.classList.remove('visible');
+            botonGuardar.disabled = false;
+        }
+
+        function mostrarAviso() {
+            aviso.classList.add('visible');
+            botonGuardar.disabled = true;
+        }
+
+        function consultarDisponibilidad() {
+            var placa = campoPlacas.value.trim();
+            if (!placa) {
+                ocultarAviso();
+                return;
+            }
+
+            idConsulta += 1;
+            var idEstaConsulta = idConsulta;
+
+            var url = new URL('{{ url_for("admin.vehiculos_placa_disponible") }}', window.location.origin);
+            url.searchParams.set('placa', placa);
+            if (idVehiculoActual !== null) {
+                url.searchParams.set('excluir', idVehiculoActual);
+            }
+
+            fetch(url)
+                .then(function (respuesta) { return respuesta.ok ? respuesta.json() : null; })
+                .then(function (resultado) {
+                    // Si el admin ya siguió escribiendo, esta respuesta quedó
+                    // obsoleta: se descarta para no pisar el estado actual
+                    // con el resultado de una placa que ya no es la vigente.
+                    if (!resultado || idEstaConsulta !== idConsulta) {
+                        return;
+                    }
+                    if (resultado.disponible) {
+                        ocultarAviso();
+                    } else {
+                        mostrarAviso();
+                    }
+                })
+                .catch(function () {
+                    // Sin conexión o error de red: no se bloquea el envío por
+                    // esto, el backend sigue siendo la validación real.
+                });
+        }
+
+        function consultarConDebounce() {
+            if (temporizadorDebounce) {
+                clearTimeout(temporizadorDebounce);
+            }
+            temporizadorDebounce = setTimeout(consultarDisponibilidad, 500);
+        }
+
+        campoPlacas.addEventListener('input', consultarConDebounce);
+        campoPlacas.addEventListener('blur', consultarDisponibilidad);
+    })();
+</script>
 {% endblock %}

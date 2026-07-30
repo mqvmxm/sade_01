@@ -5,7 +5,63 @@
 
 {% block active_page %}inicio{% endblock %}
 
+{% block extra_head %}
+<style>
+    /* Alertas ya atendidas en "Alertas recientes": se mantienen en el panel
+       (no se ocultan) pero atenuadas, para que lo urgente resalte sin perder
+       el historial reciente de un vistazo. */
+    .alerta-card.atendida {
+        opacity: 0.55;
+    }
+
+    /* Aviso discreto de actualización disponible (polling cada 30s, ver
+       script al final de este template). Reutiliza el tono warning ya
+       existente en badge-status/--color-warning-bg en vez de un color nuevo. */
+    .barra-actualizacion {
+        display: none;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        background-color: var(--color-warning-bg);
+        color: var(--color-warning);
+        border-radius: 10px;
+        padding: 0.65rem 1rem;
+        margin-bottom: 1rem;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .barra-actualizacion.visible {
+        display: flex;
+    }
+
+    .barra-actualizacion-boton {
+        background: none;
+        border: 1px solid var(--color-warning);
+        color: var(--color-warning);
+        border-radius: 8px;
+        padding: 0.3rem 0.8rem;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+    .barra-actualizacion-boton:hover {
+        background-color: var(--color-warning);
+        color: #fff;
+    }
+</style>
+{% endblock %}
+
 {% block admin_content %}
+<div id="barra-actualizacion" class="barra-actualizacion">
+    <span>Hay actualizaciones nuevas</span>
+    <button type="button" id="boton-actualizar-ahora" class="barra-actualizacion-boton">
+        Actualizar ahora
+    </button>
+</div>
+
 <p class="page-title mb-1">Bienvenido, {{ current_user.nombre }}</p>
 <p class="text-help mb-4">Panel de administrador — S.A.D.E.</p>
 
@@ -68,15 +124,20 @@
         {% if alertas_recientes %}
         <div class="d-flex flex-column gap-2">
             {% for alerta in alertas_recientes %}
-            <div class="card p-3">
+            <div class="card p-3 alerta-card {{ 'atendida' if alerta.atendida }}">
                 <div class="d-flex justify-content-between align-items-start">
-                    {% if alerta.tipo == 'retraso' %}
-                        <span class="badge-status warning">Retraso</span>
-                    {% elif alerta.tipo == 'panico' %}
-                        <span class="badge-status danger">Pánico</span>
-                    {% else %}
-                        <span class="badge-status danger">Licencia vencida</span>
-                    {% endif %}
+                    <div class="d-flex align-items-center gap-1">
+                        {% if alerta.tipo == 'retraso' %}
+                            <span class="badge-status warning">Retraso</span>
+                        {% elif alerta.tipo == 'panico' %}
+                            <span class="badge-status danger">Pánico</span>
+                        {% else %}
+                            <span class="badge-status danger">Licencia vencida</span>
+                        {% endif %}
+                        {% if alerta.atendida %}
+                            <span class="badge-status neutral">Atendida</span>
+                        {% endif %}
+                    </div>
                     <span class="text-help">{{ alerta.generada_en.strftime('%d/%m/%Y %H:%M') }}</span>
                 </div>
                 <p class="mb-0 mt-2">{{ alerta.conductor.nombre }}</p>
@@ -89,4 +150,76 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+    (function () {
+        var ESTADO_INICIAL = {
+            conteos: {{ conteos | tojson }},
+            idsAlertas: {{ alertas_recientes | map(attribute='id_alerta') | list | tojson }}
+        };
+
+        var barra = document.getElementById('barra-actualizacion');
+        var botonActualizar = document.getElementById('boton-actualizar-ahora');
+        var intervalId = null;
+
+        function idsOrdenados(lista) {
+            return lista.slice().sort(function (a, b) { return a - b; });
+        }
+
+        function estadoCambio(estadoNuevo) {
+            var conteosPrevios = ESTADO_INICIAL.conteos;
+            var conteosNuevos = estadoNuevo.conteos;
+            for (var clave in conteosPrevios) {
+                if (conteosPrevios[clave] !== conteosNuevos[clave]) {
+                    return true;
+                }
+            }
+
+            var idsPrevios = idsOrdenados(ESTADO_INICIAL.idsAlertas);
+            var idsNuevos = idsOrdenados(estadoNuevo.alertas.map(function (a) { return a.id; }));
+            if (idsPrevios.length !== idsNuevos.length) {
+                return true;
+            }
+            for (var i = 0; i < idsPrevios.length; i++) {
+                if (idsPrevios[i] !== idsNuevos[i]) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        function consultarEstado() {
+            fetch('{{ url_for("admin.dashboard_estado") }}')
+                .then(function (respuesta) {
+                    return respuesta.ok ? respuesta.json() : null;
+                })
+                .then(function (estadoNuevo) {
+                    if (estadoNuevo && estadoCambio(estadoNuevo)) {
+                        barra.classList.add('visible');
+                        detenerPolling();
+                    }
+                })
+                .catch(function () {
+                    // Fallo de red silencioso: se reintenta en el próximo ciclo,
+                    // sin interrumpir al administrador con un error visible.
+                });
+        }
+
+        function detenerPolling() {
+            if (intervalId !== null) {
+                clearInterval(intervalId);
+                intervalId = null;
+            }
+        }
+
+        intervalId = setInterval(consultarEstado, 30000);
+
+        window.addEventListener('pagehide', detenerPolling);
+
+        botonActualizar.addEventListener('click', function () {
+            location.reload();
+        });
+    })();
+</script>
 {% endblock %}

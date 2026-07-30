@@ -8,7 +8,7 @@ import unicodedata
 from datetime import date, datetime, timedelta
 from functools import wraps
 
-from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
+from flask import Blueprint, Response, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import case
 from sqlalchemy.exc import IntegrityError
@@ -273,14 +273,12 @@ def _vehiculo_para_formulario(vehiculo):
     }
 
 
-@admin.route("/dashboard")
-@admin_required
-def dashboard():
-    """Panel de administrador: 4 tarjetas de resumen, la misma lista de
-    'Viajes en curso' que usa Viajes activos (ver _viajes_en_curso) y las
-    alertas más recientes de cualquier tipo, atendidas o no.
+def _conteos_dashboard():
+    """Los 4 conteos de tarjetas del panel de administrador, compartidos por
+    dashboard() y dashboard_estado() para que ambos siempre reporten
+    exactamente lo mismo.
     """
-    conteos = {
+    return {
         "activo": Viaje.query.filter_by(estado="activo").count(),
         "alerta": Viaje.query.filter_by(estado="alerta").count(),
         "emergencia": Viaje.query.filter_by(estado="emergencia").count(),
@@ -288,6 +286,16 @@ def dashboard():
             Conductor.fecha_vencimiento_lic < date.today()
         ).count(),
     }
+
+
+@admin.route("/dashboard")
+@admin_required
+def dashboard():
+    """Panel de administrador: 4 tarjetas de resumen, la misma lista de
+    'Viajes en curso' que usa Viajes activos (ver _viajes_en_curso) y las
+    alertas más recientes de cualquier tipo, atendidas o no.
+    """
+    conteos = _conteos_dashboard()
 
     viajes_en_curso = _viajes_en_curso()
 
@@ -297,12 +305,43 @@ def dashboard():
         .limit(5)
         .all()
     )
+    # Las 5 siguen siendo las más recientes de cualquier tipo (atendidas o
+    # no); dentro de esas 5 se reordena para que las NO atendidas siempre
+    # aparezcan primero, aunque sean un poco más viejas -lo urgente no debe
+    # quedar enterrado debajo de algo ya resuelto. sort() es estable, así que
+    # el orden por fecha dentro de cada grupo (atendida/no atendida) se
+    # conserva.
+    alertas_recientes.sort(key=lambda alerta: alerta.atendida)
 
     return render_template(
         "admin/dashboard.html",
         conteos=conteos,
         viajes_en_curso=viajes_en_curso,
         alertas_recientes=alertas_recientes,
+    )
+
+
+@admin.route("/dashboard/estado")
+@admin_required
+def dashboard_estado():
+    """JSON con los mismos datos que dashboard() (4 conteos + ids/timestamps
+    de las últimas 5 alertas), para que el panel detecte cambios en segundo
+    plano (polling cada 30s) sin recargar la página completa.
+    """
+    conteos = _conteos_dashboard()
+
+    alertas_recientes = Alerta.query.order_by(Alerta.generada_en.desc()).limit(5).all()
+
+    return jsonify(
+        conteos=conteos,
+        alertas=[
+            {
+                "id": alerta.id_alerta,
+                "atendida": alerta.atendida,
+                "generada_en": alerta.generada_en.isoformat(),
+            }
+            for alerta in alertas_recientes
+        ],
     )
 
 
@@ -692,6 +731,64 @@ def vehiculos_lista():
     )
 
 
+def _sugerir_num_unidad():
+    """Sugiere el siguiente número de unidad consecutivo para prellenar el
+    alta de un vehículo nuevo (RF-2.2): toma el num_unidad numérico más alto
+    ya registrado y propone ese valor + 1, conservando el mismo relleno de
+    ceros que tenía ese registro (ej. '01' -> '02'). Es solo una sugerencia
+    prellenada -el admin puede cambiarla libremente-, no un valor bloqueado
+    ni validado.
+
+    num_unidad es texto libre (ver Vehiculo.num_unidad), así que puede haber
+    registros viejos no puramente numéricos; esos se ignoran para este
+    cálculo en vez de tronar. Si no hay ningún num_unidad numérico
+    registrado todavía, sugiere '01'.
+    """
+    maximo_valor = None
+    maximo_texto = None
+    for (num_unidad,) in db.session.query(Vehiculo.num_unidad).all():
+        texto = (num_unidad or "").strip()
+        if not texto.isdigit():
+            continue
+        valor = int(texto)
+        if maximo_valor is None or valor > maximo_valor:
+            maximo_valor = valor
+            maximo_texto = texto
+
+    if maximo_valor is None:
+        return "01"
+    return str(maximo_valor + 1).zfill(len(maximo_texto))
+
+
+@admin.route("/vehiculos/placa-disponible")
+@admin_required
+def vehiculos_placa_disponible():
+    """Ayuda de UX para el formulario de vehículo (alta y edición): indica si
+    ya existe un vehículo con esa placa, para avisar en tiempo real antes de
+    enviar el formulario.
+
+    Esto NO reemplaza la validación real: el IntegrityError + rollback al
+    guardar (ver vehiculos_nuevo/vehiculos_editar) sigue siendo la única
+    protección definitiva contra una placa duplicada, por si el JS está
+    deshabilitado o hay una condición de carrera entre esta consulta y el
+    guardado real.
+
+    ?excluir=<id_vehiculo> excluye ese vehículo de la comparación, para que
+    el formulario de edición no marque la placa actual del vehículo como
+    duplicada de sí misma.
+    """
+    placa = request.args.get("placa", "").strip().upper()
+    if not placa:
+        return jsonify(disponible=True)
+
+    id_excluir = request.args.get("excluir", type=int)
+    query = Vehiculo.query.filter(db.func.upper(Vehiculo.placas) == placa)
+    if id_excluir is not None:
+        query = query.filter(Vehiculo.id_vehiculo != id_excluir)
+
+    return jsonify(disponible=query.first() is None)
+
+
 @admin.route("/vehiculos/nuevo", methods=["GET", "POST"])
 @admin_required
 def vehiculos_nuevo():
@@ -723,7 +820,11 @@ def vehiculos_nuevo():
         flash(f"Vehículo '{vehiculo.placas}' registrado correctamente.", "success")
         return redirect(url_for("admin.vehiculos_lista"))
 
-    return render_template("admin/vehiculos/formulario.html", vehiculo=None, id_vehiculo=None)
+    return render_template(
+        "admin/vehiculos/formulario.html",
+        vehiculo={"num_unidad": _sugerir_num_unidad()},
+        id_vehiculo=None,
+    )
 
 
 @admin.route("/vehiculos/<int:id_vehiculo>/editar", methods=["GET", "POST"])
