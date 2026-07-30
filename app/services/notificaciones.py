@@ -60,6 +60,39 @@ def generar_mensaje_emergencia(nombre_conductor, latitud, longitud):
     return f"[S.A.D.E.] Aviso silencioso activado por {nombre_conductor}. {ubicacion}"
 
 
+def generar_mensaje_retraso(nombre_conductor, origen, destino, eta):
+    """Arma el texto de la notificación de retraso del motor asíncrono (RF-3.5).
+
+    A diferencia de generar_mensaje_emergencia(), este aviso no es una
+    emergencia: el texto lo deja explícito para que el contacto de
+    emergencia y el administrador no lo confundan con un aviso de pánico.
+    No incluye link de ubicación porque el chequeo periódico de ETA
+    (app/controllers/scheduler.py) no captura coordenadas GPS.
+    """
+    return (
+        f"[S.A.D.E.] {nombre_conductor} superó su hora estimada de llegada "
+        f"({eta}) en la ruta {origen} -> {destino}. Sin confirmación de llegada."
+    )
+
+
+# Algunos errores de Twilio (y de librerías que dependen de él) llegan con
+# códigos de color de terminal (ANSI/SGR, ej. "\x1b[31m...\x1b[49m") en el
+# propio texto del mensaje. Eso no significa nada en una página web: solo se
+# ve como basura en la Bitácora, así que se limpia antes de guardar la
+# descripción. Se define aquí (en vez de en cada módulo que notifica) porque
+# tanto app/controllers/emergencia.py como app/controllers/scheduler.py
+# necesitan la misma limpieza sobre los mismos errores de enviar_whatsapp()/
+# enviar_sms().
+_PATRON_ANSI = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]")
+
+
+def quitar_codigos_ansi(texto):
+    """Quita secuencias de escape ANSI de un texto, sin tocar el resto del contenido."""
+    if not texto:
+        return texto
+    return _PATRON_ANSI.sub("", texto)
+
+
 def _simulacion_activa():
     return current_app.config.get("SIMULATE_TWILIO", True)
 

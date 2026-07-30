@@ -3,8 +3,6 @@
 # APScheduler (RF-3.4/3.5) ya cubre la detección automática de retrasos.
 # Este endpoint es el disparo manual explícito ante una emergencia real.
 
-import re
-
 from flask import Blueprint, current_app, jsonify, request
 from flask_login import current_user
 
@@ -18,23 +16,10 @@ from app.services.notificaciones import (
     enviar_sms,
     enviar_whatsapp,
     generar_mensaje_emergencia,
+    quitar_codigos_ansi,
 )
 
 emergencia = Blueprint("emergencia", __name__)
-
-# Algunos errores de Twilio (y de librerias que dependen de el) llegan con
-# codigos de color de terminal (ANSI/SGR, ej. "\x1b[31m...\x1b[49m") en el
-# propio texto del mensaje. Eso no significa nada en una pagina web: solo se
-# ve como basura en la Bitacora, asi que se limpia antes de guardar la
-# descripcion (ver _registrar_bitacora_envio).
-_PATRON_ANSI = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]")
-
-
-def _quitar_codigos_ansi(texto):
-    """Quita secuencias de escape ANSI de un texto, sin tocar el resto del contenido."""
-    if not texto:
-        return texto
-    return _PATRON_ANSI.sub("", texto)
 
 
 @emergencia.route("/activar", methods=["POST"])
@@ -156,7 +141,7 @@ def _notificar_emergencia(registro_emergencia, perfil):
 
 def _registrar_bitacora_envio(registro_emergencia, canal, destinatario, exito, error):
     """Agrega una fila de Bitacora describiendo un intento de envío individual."""
-    error_limpio = _quitar_codigos_ansi(error)
+    error_limpio = quitar_codigos_ansi(error)
     resultado = "enviado" if exito else f"fallido ({error_limpio})" if error_limpio else "fallido"
     bitacora = Bitacora(
         id_usuario=current_user.id_usuario,
