@@ -127,10 +127,17 @@
         }
 
         /* Tarjetas */
+        /* Bootstrap 5.3 fija su propio color en .card (via --bs-card-color/
+           --bs-body-color), que no sigue nuestra variable --color-text: sin
+           esto, cualquier texto dentro de una tarjeta sin clase de color
+           explícita (dd, p sueltos, etc.) hereda un gris oscuro fijo de
+           Bootstrap y queda casi invisible en modo oscuro (data-tema="oscuro",
+           usado solo por las vistas del conductor). */
         .card {
             background-color: var(--color-card-bg);
             border: 1px solid var(--color-card-border);
             border-radius: 14px;
+            color: var(--color-text);
         }
 
         /* Badges de estado, forma de pildora con fondo suave */
