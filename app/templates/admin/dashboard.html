@@ -155,7 +155,11 @@
     (function () {
         var ESTADO_INICIAL = {
             conteos: {{ conteos | tojson }},
-            idsAlertas: {{ alertas_recientes | map(attribute='id_alerta') | list | tojson }}
+            alertas: [
+                {% for alerta in alertas_recientes %}
+                { id: {{ alerta.id_alerta }}, atendida: {{ alerta.atendida | tojson }} }{{ "," if not loop.last }}
+                {% endfor %}
+            ]
         };
 
         var barra = document.getElementById('barra-actualizacion');
@@ -164,6 +168,14 @@
 
         function idsOrdenados(lista) {
             return lista.slice().sort(function (a, b) { return a - b; });
+        }
+
+        function atendidaPorId(alertas) {
+            var mapa = {};
+            alertas.forEach(function (alerta) {
+                mapa[alerta.id] = alerta.atendida;
+            });
+            return mapa;
         }
 
         function estadoCambio(estadoNuevo) {
@@ -175,13 +187,25 @@
                 }
             }
 
-            var idsPrevios = idsOrdenados(ESTADO_INICIAL.idsAlertas);
+            var idsPrevios = idsOrdenados(ESTADO_INICIAL.alertas.map(function (a) { return a.id; }));
             var idsNuevos = idsOrdenados(estadoNuevo.alertas.map(function (a) { return a.id; }));
             if (idsPrevios.length !== idsNuevos.length) {
                 return true;
             }
             for (var i = 0; i < idsPrevios.length; i++) {
                 if (idsPrevios[i] !== idsNuevos[i]) {
+                    return true;
+                }
+            }
+
+            // Mismos ids visibles en ambos momentos: revisa si alguna de esas
+            // alertas cambió de atendida (ej. otro admin la marcó como
+            // atendida desde otra sesión) — eso no mueve conteos ni ids, así
+            // que sin esto quedaría invisible para el polling.
+            var atendidaPrevia = atendidaPorId(ESTADO_INICIAL.alertas);
+            var atendidaNueva = atendidaPorId(estadoNuevo.alertas);
+            for (var idAlerta in atendidaPrevia) {
+                if (atendidaPrevia[idAlerta] !== atendidaNueva[idAlerta]) {
                     return true;
                 }
             }

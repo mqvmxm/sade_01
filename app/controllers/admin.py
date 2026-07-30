@@ -242,6 +242,17 @@ def _datos_vehiculo_desde_formulario():
 
     Retorna un dict listo para crear/actualizar un Vehiculo (sin 'estado', que
     se maneja aparte), o None (y ya hizo flash del error) si el año no es válido.
+
+    Usada tanto por vehiculos_nuevo() como por vehiculos_editar() (alta y
+    edición comparten esta misma función), así que normalizar aquí basta para
+    cubrir ambos casos.
+
+    placas se normaliza a mayúsculas (además del strip): el UNIQUE de BD sobre
+    esa columna es sensible a mayúsculas/minúsculas, así que sin esto
+    'hgo-1206' y 'HGO-1206' no chocarían entre sí y se colaría un vehículo con
+    la misma placa física duplicada. vehiculos_placa_disponible() ya comparaba
+    con func.upper() para el aviso en tiempo real; ahora el guardado real
+    queda consistente con esa misma normalización.
     """
     anio_texto = request.form.get("anio", "")
     try:
@@ -251,7 +262,7 @@ def _datos_vehiculo_desde_formulario():
         return None
 
     return {
-        "placas": request.form.get("placas", "").strip(),
+        "placas": request.form.get("placas", "").strip().upper(),
         "num_unidad": request.form.get("num_unidad", "").strip(),
         "marca": request.form.get("marca", "").strip(),
         "modelo": request.form.get("modelo", "").strip(),
