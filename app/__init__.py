@@ -56,9 +56,6 @@ def create_app(config_class=Config):
     from app.controllers.mecanico import mecanico as mecanico_bp
     app.register_blueprint(mecanico_bp, url_prefix='/mecanico')
 
-    from app.controllers.emergencia import emergencia as emergencia_bp
-    app.register_blueprint(emergencia_bp, url_prefix='/emergencia')
-
     _iniciar_scheduler(app)
     _registrar_cli(app)
     _registrar_manejadores_errores(app)
