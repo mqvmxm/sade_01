@@ -40,6 +40,7 @@ TIPO_INFO_HISTORIAL = {
     "retraso": ("Alerta de retraso", "warning", "admin.alertas_lista"),
     "panico": ("Aviso de emergencia", "danger", "admin.alertas_lista"),
     "licencia_vencida": ("Licencia vencida", "danger", "admin.alertas_lista"),
+    "asistencia_mecanica": ("Problema mecánico", "warning", "admin.alertas_lista"),
     "averia": ("Avería en ruta", "warning", "admin.reportes_averia_lista"),
     "cerrado_forzado": ("Viaje cerrado (forzado)", "danger", "admin.viajes_lista"),
     "completado": ("Viaje completado", "success", "admin.viajes_lista"),
@@ -1223,7 +1224,7 @@ def _construir_eventos_historial():
 
     alertas = (
         Alerta.query.options(joinedload(Alerta.conductor), joinedload(Alerta.viaje))
-        .filter(Alerta.tipo.in_(["retraso", "panico", "licencia_vencida"]))
+        .filter(Alerta.tipo.in_(["retraso", "panico", "licencia_vencida", "asistencia_mecanica"]))
         .all()
     )
     for alerta in alertas:
@@ -1234,6 +1235,13 @@ def _construir_eventos_historial():
         elif alerta.tipo == "panico":
             slug = "panico"
             cierre = _cierre_para_panico(alerta, reportes_por_viaje, forzado_por_viaje, manual_por_viaje)
+            ruta = f"{alerta.viaje.origen} → {alerta.viaje.destino}" if alerta.viaje else "—"
+            id_vehiculo = alerta.viaje.id_vehiculo if alerta.viaje else None
+        elif alerta.tipo == "asistencia_mecanica":
+            # El conductor es siempre quien la genera (RF-5): a diferencia de
+            # panico/viajes cerrados, no hay nada que derivar del cierre del
+            # viaje asociado.
+            slug, cierre = "asistencia_mecanica", "Conductor"
             ruta = f"{alerta.viaje.origen} → {alerta.viaje.destino}" if alerta.viaje else "—"
             id_vehiculo = alerta.viaje.id_vehiculo if alerta.viaje else None
         else:  # licencia_vencida (contemplado por esquema; hoy nunca se genera)

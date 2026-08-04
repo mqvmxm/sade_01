@@ -35,7 +35,7 @@ class Alerta(db.Model):
 
     __table_args__ = (
         CheckConstraint(
-            "tipo IN ('retraso', 'panico', 'licencia_vencida')",
+            "tipo IN ('retraso', 'panico', 'licencia_vencida', 'asistencia_mecanica')",
             name="ck_alertas_tipo",
         ),
         CheckConstraint("prioridad IN (1, 2, 3)", name="ck_alertas_prioridad"),

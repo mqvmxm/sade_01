@@ -6,8 +6,10 @@ from functools import wraps
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from sqlalchemy.orm import joinedload
 
 from app import db
+from app.models.alerta import Alerta
 from app.models.bitacora import Bitacora
 from app.models.reporte_averia import ReporteAveria
 from app.models.vehiculo import Vehiculo
@@ -40,11 +42,29 @@ def _viaje_activo_de(id_vehiculo):
     ).first()
 
 
+def _alerta_mecanica_pendiente(id_viaje):
+    """Alerta tipo='asistencia_mecanica' sin atender de ese viaje, o None.
+
+    El reporte de avería (vehiculos_reportar_averia) es la ÚNICA forma en
+    que un mecánico cierra este tipo de alerta: no existe una ruta aparte de
+    "marcar como atendida" para este rol. Se resuelve automáticamente al
+    completar el flujo de reporte de avería que ya existía.
+    """
+    return Alerta.query.filter_by(
+        id_viaje=id_viaje, tipo="asistencia_mecanica", atendida=False
+    ).first()
+
+
 @mecanico.route("/dashboard")
 @mecanico_required
 def dashboard():
-    """Muestra el panel de mecánico, verificando el rol en backend (RF-1.3)."""
-    return render_template("mecanico/dashboard.html")
+    """Ya no es el destino post-login del rol mecánico (ver
+    auth._dashboard_redirect, que manda directo a vehiculos_lista): se
+    conserva solo por si algún enlace viejo sigue apuntando aquí, y
+    redirige de inmediato a la lista de vehículos en vez de mostrar un
+    panel intermedio que no aportaba nada.
+    """
+    return redirect(url_for("mecanico.vehiculos_lista"))
 
 
 @mecanico.route("/vehiculos")
@@ -57,11 +77,32 @@ def vehiculos_lista():
         Viaje.estado.in_(VIAJE_ESTADOS_CON_VEHICULO_EN_USO)
     ).all()
     vehiculos_con_viaje_activo = {viaje.id_vehiculo for viaje in viajes_en_uso}
+    id_vehiculo_por_viaje = {viaje.id_viaje: viaje.id_vehiculo for viaje in viajes_en_uso}
+
+    # Alertas 'asistencia_mecanica' sin atender de un viaje en curso: el
+    # mecánico debe verlas de inmediato en la lista, sin clics extra (RF-5).
+    # Se cierran solo al completar vehiculos_reportar_averia (ver
+    # _alerta_mecanica_pendiente), no hay una ruta aparte para atenderlas.
+    alertas_mecanicas_por_vehiculo = {}
+    if id_vehiculo_por_viaje:
+        alertas = (
+            Alerta.query.options(joinedload(Alerta.conductor))
+            .filter(
+                Alerta.tipo == "asistencia_mecanica",
+                Alerta.atendida.is_(False),
+                Alerta.id_viaje.in_(id_vehiculo_por_viaje.keys()),
+            )
+            .all()
+        )
+        for alerta in alertas:
+            id_vehiculo = id_vehiculo_por_viaje[alerta.id_viaje]
+            alertas_mecanicas_por_vehiculo.setdefault(id_vehiculo, alerta)
 
     return render_template(
         "mecanico/vehiculos/lista.html",
         vehiculos=vehiculos,
         vehiculos_con_viaje_activo=vehiculos_con_viaje_activo,
+        alertas_mecanicas_por_vehiculo=alertas_mecanicas_por_vehiculo,
     )
 
 
@@ -134,6 +175,12 @@ def vehiculos_reportar_averia(id_vehiculo):
         )
         return redirect(url_for("mecanico.vehiculos_lista"))
 
+    # Si el conductor ya reportó un problema mecánico para este mismo viaje,
+    # se prellena la descripción con ese aviso (el mecánico puede editarlo
+    # libremente) para que no tenga que volver a escribir lo mismo, y se usa
+    # más abajo en el POST para cerrar esa alerta automáticamente.
+    alerta_mecanica = _alerta_mecanica_pendiente(viaje_activo.id_viaje)
+
     if request.method == "POST":
         descripcion = request.form.get("descripcion", "").strip()
         if not descripcion:
@@ -166,6 +213,10 @@ def vehiculos_reportar_averia(id_vehiculo):
             viaje_activo.estado = "cerrado_admin"
             viaje_activo.hora_llegada = datetime.now()
 
+        if alerta_mecanica is not None:
+            alerta_mecanica.atendida = True
+            alerta_mecanica.atendida_en = datetime.now()
+
         db.session.flush()  # asigna reporte.id_reporte antes de la Bitácora
 
         bitacora = Bitacora(
@@ -188,4 +239,5 @@ def vehiculos_reportar_averia(id_vehiculo):
         "mecanico/vehiculos/reportar_averia.html",
         vehiculo=vehiculo,
         viaje_activo=viaje_activo,
+        alerta_mecanica=alerta_mecanica,
     )

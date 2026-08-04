@@ -2,6 +2,19 @@
 
 {% block title %}Reportar avería — S.A.D.E.{% endblock %}
 
+{% block extra_head %}
+<style>
+    .aviso-falla-previa {
+        background-color: var(--color-warning-bg);
+        color: var(--color-warning);
+        border-radius: 10px;
+        padding: 0.65rem 1rem;
+        margin-bottom: 1rem;
+        font-size: 12px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
@@ -21,6 +34,15 @@
                 Viaje en curso: {{ viaje_activo.origen }} → {{ viaje_activo.destino }}
             </p>
 
+            {% if alerta_mecanica %}
+            <div class="aviso-falla-previa">
+                <p class="mb-0" style="font-weight: 600;">El conductor ya reportó una falla</p>
+                <p class="mb-0">
+                    Se prellenó la descripción con su aviso; puedes editarla libremente antes de guardar.
+                </p>
+            </div>
+            {% endif %}
+
             <form
                 method="POST"
                 action="{{ url_for('mecanico.vehiculos_reportar_averia', id_vehiculo=vehiculo.id_vehiculo) }}"
@@ -35,7 +57,7 @@
                         rows="4"
                         required
                         autofocus
-                    ></textarea>
+                    >{{ alerta_mecanica.mensaje if alerta_mecanica else '' }}</textarea>
                 </div>
 
                 <div class="mb-4 form-check">
@@ -49,6 +71,11 @@
                     <label class="form-check-label" for="cambiar_estado">
                         Cambiar vehículo a 'en taller'
                     </label>
+                    <div class="text-help mt-1">
+                        Marca esta opción solo si el vehículo debe quedar fuera de servicio en el
+                        taller. Si la falla se resolvió ahí mismo, en el camino, déjala sin marcar
+                        — el viaje continúa normalmente y el conductor sigue su ruta.
+                    </div>
                 </div>
 
                 <button type="submit" class="btn btn-primary w-100">Registrar reporte</button>

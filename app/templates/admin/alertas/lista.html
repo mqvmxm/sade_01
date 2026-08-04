@@ -37,6 +37,8 @@
                         <span class="badge-status warning">Retraso</span>
                     {% elif alerta.tipo == 'panico' %}
                         <span class="badge-status danger">Pánico</span>
+                    {% elif alerta.tipo == 'asistencia_mecanica' %}
+                        <span class="badge-status warning">Problema mecánico</span>
                     {% else %}
                         <span class="badge-status danger">Licencia vencida</span>
                     {% endif %}
@@ -57,6 +59,8 @@
                     <span class="badge-status warning">Retraso</span>
                 {% elif alerta_seleccionada.tipo == 'panico' %}
                     <span class="badge-status danger">Pánico</span>
+                {% elif alerta_seleccionada.tipo == 'asistencia_mecanica' %}
+                    <span class="badge-status warning">Problema mecánico</span>
                 {% else %}
                     <span class="badge-status danger">Licencia vencida</span>
                 {% endif %}

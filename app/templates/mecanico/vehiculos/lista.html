@@ -2,6 +2,24 @@
 
 {% block title %}Vehículos — S.A.D.E.{% endblock %}
 
+{% block extra_head %}
+<style>
+    /* Fila de un vehículo con una Alerta 'asistencia_mecanica' sin atender
+       (reportada por el conductor, ver mecanico.vehiculos_lista): se
+       resalta con el mismo tono warning que el resto del sistema, para que
+       el mecánico la note de inmediato sin clics extra. */
+    .fila-falla-reportada > td {
+        background-color: var(--color-warning-bg) !important;
+    }
+
+    .aviso-falla-mecanica {
+        font-size: 10.5px;
+        color: var(--color-warning);
+        margin: 0.25rem 0 0;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="d-flex justify-content-between align-items-start mb-1">
     <p class="page-title mb-0">Vehículos</p>
@@ -25,7 +43,8 @@
         </thead>
         <tbody>
             {% for vehiculo in vehiculos %}
-            <tr>
+            {% set alerta_mecanica = alertas_mecanicas_por_vehiculo.get(vehiculo.id_vehiculo) %}
+            <tr class="{{ 'fila-falla-reportada' if alerta_mecanica }}">
                 <td>{{ vehiculo.placas }}</td>
                 <td>{{ vehiculo.num_unidad }}</td>
                 <td>{{ vehiculo.marca }} {{ vehiculo.modelo }}</td>
@@ -36,6 +55,12 @@
                         <span class="badge-status warning">En taller</span>
                     {% elif vehiculo.estado == 'en_ruta' %}
                         <span class="badge-status neutral">En ruta</span>
+                    {% endif %}
+                    {% if alerta_mecanica %}
+                        <div class="mt-1">
+                            <span class="badge-status warning">Falla reportada</span>
+                            <p class="aviso-falla-mecanica">{{ alerta_mecanica.mensaje }}</p>
+                        </div>
                     {% endif %}
                 </td>
                 <td class="text-end">

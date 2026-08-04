@@ -36,7 +36,7 @@ def _dashboard_redirect(usuario):
     if usuario.es_conductor():
         return redirect(url_for("conductor.dashboard"))
     if usuario.es_mecanico():
-        return redirect(url_for("mecanico.dashboard"))
+        return redirect(url_for("mecanico.vehiculos_lista"))
     return redirect(url_for("auth.login"))
 
 

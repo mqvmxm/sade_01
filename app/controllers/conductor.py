@@ -2,7 +2,7 @@
 # (RF-3: Monitoreo de rutas). El botón de pánico (RF-4) vive en el blueprint
 # 'emergencia'.
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app import db
 from app.models.alerta import Alerta
+from app.models.bitacora import Bitacora
 from app.models.vehiculo import Vehiculo
 from app.models.viaje import Viaje
 
@@ -49,8 +50,16 @@ def dashboard():
         Viaje.estado.in_(["activo", "alerta", "emergencia"]),
     ).first()
 
+    # Ayuda de UX para el atributo min del input datetime-local del check-in
+    # (ver viajes_nuevo, que es la validación real): mismo umbral de 10
+    # minutos, calculado en el momento de renderizar la página.
+    eta_min = (datetime.now() + timedelta(minutes=10)).strftime("%Y-%m-%dT%H:%M")
+
     return render_template(
-        "conductor/dashboard.html", conductor=perfil, viaje_activo=viaje_activo
+        "conductor/dashboard.html",
+        conductor=perfil,
+        viaje_activo=viaje_activo,
+        eta_min=eta_min,
     )
 
 
@@ -129,11 +138,39 @@ def viajes_nuevo():
         flash("Debes indicar origen y destino.", "error")
         return redirect(url_for("conductor.dashboard"))
 
+    # El HTML ya pone minlength=3 y bloquea números puros como ayuda de UX
+    # (ver conductor/dashboard.html), pero esa validación nunca es de fiar
+    # por sí sola: se repite aquí porque es la única que de verdad protege
+    # contra un formulario mandado sin pasar por el HTML.
+    if len(origen) < 3 or len(destino) < 3:
+        flash("Origen y destino deben tener al menos 3 caracteres.", "error")
+        return redirect(url_for("conductor.dashboard"))
+
+    if origen.isdigit() or destino.isdigit():
+        flash("Origen y destino deben ser un nombre de lugar válido, no solo números.", "error")
+        return redirect(url_for("conductor.dashboard"))
+
+    # Insensible a mayúsculas y a diferencias de espaciado (" La  Paz " vs
+    # "la paz" deben contarse como el mismo lugar).
+    if " ".join(origen.split()).casefold() == " ".join(destino.split()).casefold():
+        flash("Origen y destino no pueden ser el mismo lugar.", "error")
+        return redirect(url_for("conductor.dashboard"))
+
     eta_texto = request.form.get("eta", "")
     try:
         eta = datetime.strptime(eta_texto, "%Y-%m-%dT%H:%M")
     except ValueError:
         flash("La hora estimada de llegada (ETA) no es válida.", "error")
+        return redirect(url_for("conductor.dashboard"))
+
+    # Mismo criterio que el resto de la validación: el atributo min del
+    # input datetime-local (ver conductor/dashboard.html) es solo ayuda de
+    # UX, la hora del servidor es la única fuente de verdad.
+    if eta < datetime.now() + timedelta(minutes=10):
+        flash(
+            "La hora estimada de llegada debe ser al menos 10 minutos después de ahora.",
+            "error",
+        )
         return redirect(url_for("conductor.dashboard"))
 
     vehiculo = Vehiculo.query.filter_by(estado="disponible").first()
@@ -173,6 +210,71 @@ def viajes_nuevo():
         return redirect(url_for("conductor.dashboard"))
 
     flash(f"Viaje iniciado correctamente hacia '{destino}'.", "success")
+    return redirect(url_for("conductor.dashboard"))
+
+
+@conductor.route("/reportar-problema-mecanico", methods=["POST"])
+@conductor_required
+def reportar_problema_mecanico():
+    """Registra un problema mecánico en ruta reportado por el conductor
+    (RF-5: gestión de flota, disparado por el conductor esta vez).
+
+    Distinto del aviso silencioso de emergencia.py: es visible y de un solo
+    clic, y deja una Alerta real en el sistema en vez de solo facilitar una
+    llamada externa. Solo aplica con un viaje 'activo' o 'alerta' -- si el
+    viaje ya está en 'emergencia' no se ofrece esta opción (es un problema
+    de seguridad, no mecánico), y como el filtro de abajo no incluye
+    'emergencia' entre los estados válidos, esa alerta nunca podría crearse
+    aunque el formulario llegara a enviarse por algún medio distinto del
+    botón del dashboard.
+    """
+    perfil = current_user.conductor
+    if perfil is None:
+        flash("Tu cuenta no tiene un perfil de conductor asociado.", "error")
+        return redirect(url_for("conductor.dashboard"))
+
+    viaje = Viaje.query.filter(
+        Viaje.id_conductor == perfil.id_conductor,
+        Viaje.estado.in_(["activo", "alerta"]),
+    ).first()
+    if viaje is None:
+        flash(
+            "No tienes un viaje en curso al que reportarle un problema mecánico.",
+            "error",
+        )
+        return redirect(url_for("conductor.dashboard"))
+
+    descripcion = request.form.get("descripcion", "").strip()
+    if descripcion:
+        mensaje = f"{perfil.nombre} reportó un problema mecánico en ruta: {descripcion}"
+    else:
+        mensaje = f"{perfil.nombre} reportó un problema mecánico en ruta, sin más detalle."
+
+    alerta = Alerta(
+        id_viaje=viaje.id_viaje,
+        id_conductor=perfil.id_conductor,
+        tipo="asistencia_mecanica",
+        prioridad=2,
+        mensaje=mensaje,
+        atendida=False,
+    )
+    db.session.add(alerta)
+    db.session.flush()  # asigna alerta.id_alerta antes de la Bitácora
+
+    bitacora = Bitacora(
+        id_usuario=current_user.id_usuario,
+        accion="reporte_problema_mecanico_conductor",
+        descripcion=(
+            f"Conductor {perfil.nombre} reportó un problema mecánico en el viaje "
+            f"#{viaje.id_viaje} ({viaje.origen} → {viaje.destino})."
+        ),
+        tabla_afectada="alertas",
+        registro_id=alerta.id_alerta,
+    )
+    db.session.add(bitacora)
+    db.session.commit()
+
+    flash("Problema mecánico reportado. El administrador fue notificado.", "success")
     return redirect(url_for("conductor.dashboard"))
 
 
