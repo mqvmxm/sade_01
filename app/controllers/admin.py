@@ -676,6 +676,12 @@ def cuentas_cambiar_estado(id_usuario):
     Dos protecciones para no dejar el sistema sin nadie que lo administre:
     un admin no puede desactivar su propia cuenta, y no puede desactivar al
     último administrador activo que quede (aunque no sea él mismo).
+
+    Desactivar la cuenta de un conductor NUNCA toca sus Viajes/Alertas
+    pasados ni los oculta de ningún lado (Historial, Viajes activos,
+    Bitácora, etc.): esos filtran por estado del Viaje, no por si la cuenta
+    del conductor sigue activa. `usuario.activo` solo lo lee is_active()
+    (bloquea el login, ver auth.login) y esta misma vista.
     """
     usuario = Usuario.query.get_or_404(id_usuario)
     destino = _DESTINO_POR_ROL_CUENTA.get(usuario.rol, "admin.dashboard")
@@ -689,6 +695,25 @@ def cuentas_cambiar_estado(id_usuario):
         if admins_activos <= 1:
             flash("No puedes desactivar al único administrador activo del sistema.", "error")
             return redirect(url_for(destino))
+
+    # Decisión de diseño: NO se bloquea desactivar a un conductor con un
+    # viaje 'programado'/'activo'/'alerta'/'emergencia' sin cerrar -- el
+    # admin puede necesitar quitarle el acceso de inmediato (ej. renuncia a
+    # medio turno) sin que eso dependa de resolver primero ese viaje, que de
+    # todas formas se sigue gestionando igual desde Viajes activos / Rutas
+    # programadas (cerrar forzado, cancelar programada) sin importar si el
+    # conductor puede volver a iniciar sesión. Además, una sesión YA
+    # iniciada no se cierra sola al desactivar la cuenta (Flask-Login no
+    # revalida is_active en cada request), así que un conductor a mitad de
+    # viaje normalmente puede seguir confirmando su llegada aunque se le
+    # desactive la cuenta en ese momento. Se permite, pero se avisa
+    # explícitamente para que el admin no lo pierda de vista.
+    viaje_sin_cerrar = None
+    if usuario.rol == "conductor" and usuario.activo and usuario.id_conductor is not None:
+        viaje_sin_cerrar = Viaje.query.filter(
+            Viaje.id_conductor == usuario.id_conductor,
+            Viaje.estado.in_(["programado", "activo", "alerta", "emergencia"]),
+        ).first()
 
     estado_anterior = "activa" if usuario.activo else "inactiva"
     usuario.activo = not usuario.activo
@@ -708,6 +733,15 @@ def cuentas_cambiar_estado(id_usuario):
     db.session.commit()
 
     flash(f"Cuenta '{usuario.nombre_usuario}' ahora está {estado_nuevo}.", "success")
+
+    if viaje_sin_cerrar is not None:
+        flash(
+            f"Nota: {usuario.nombre} tenía un viaje '{viaje_sin_cerrar.estado}' sin cerrar "
+            f"(#{viaje_sin_cerrar.id_viaje}) al desactivarlo. Eso NO se canceló ni se cerró "
+            "solo -- únicamente se le bloqueó el inicio de sesión. Revisa Viajes activos o "
+            "Rutas programadas si hace falta cerrarlo o cancelarlo.",
+            "warning",
+        )
     return redirect(url_for(destino))
 
 
