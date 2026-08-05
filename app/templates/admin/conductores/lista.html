@@ -71,7 +71,12 @@
                 </td>
                 <td>
                     {% if cuenta is none %}
-                        <span class="badge-status neutral">Sin cuenta</span>
+                        <a
+                            href="{{ url_for('admin.conductores_crear_cuenta', id_conductor=conductor.id_conductor) }}"
+                            class="badge-status neutral text-decoration-none"
+                        >
+                            Crear cuenta de acceso
+                        </a>
                     {% elif cuenta.activo %}
                         <span class="badge-status success">Activa</span>
                     {% else %}

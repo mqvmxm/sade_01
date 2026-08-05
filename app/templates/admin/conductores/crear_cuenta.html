@@ -1,0 +1,86 @@
+{% extends 'admin/_layout.html' %}
+
+{% set f = formulario or {} %}
+
+{% block title %}Crear cuenta de acceso — S.A.D.E.{% endblock %}
+
+{% block active_page %}conductores{% endblock %}
+
+{% block admin_content %}
+<p class="page-title mb-4">Crear cuenta de acceso</p>
+<p class="text-help mb-4">
+    Para el conductor <strong>{{ conductor.nombre }}</strong> (licencia {{ conductor.num_licencia }}),
+    que todavía no tiene una cuenta de usuario vinculada.
+</p>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <form method="POST" action="{{ url_for('admin.conductores_crear_cuenta', id_conductor=conductor.id_conductor) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label for="nombre_usuario" class="form-label">Nombre de usuario</label>
+                <input
+                    type="text"
+                    class="form-control"
+                    id="nombre_usuario"
+                    name="nombre_usuario"
+                    value="{{ f.get('nombre_usuario', '') }}"
+                    required
+                    autofocus
+                >
+            </div>
+            <div class="mb-3">
+                <label for="contrasena" class="form-label">Contraseña temporal</label>
+                <input
+                    type="password"
+                    class="form-control"
+                    id="contrasena"
+                    name="contrasena"
+                    minlength="8"
+                    required
+                >
+                <div class="text-help mt-1">
+                    Mínimo 8 caracteres. El conductor podrá cambiarla después con
+                    "¿Olvidaste tu contraseña?".
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="email" class="form-label">Correo electrónico</label>
+                <input
+                    type="email"
+                    class="form-control"
+                    id="email"
+                    name="email"
+                    value="{{ f.get('email', '') }}"
+                    placeholder="correo@ejemplo.com"
+                    required
+                >
+                <div class="text-help mt-1">
+                    Se usa para "¿Olvidaste tu contraseña?" de la cuenta que se creará.
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Crear cuenta</button>
+                <a href="{{ url_for('admin.conductores_lista') }}" class="btn btn-outline-secondary">
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="help-panel">
+            <p class="help-panel-title mb-0">¿Por qué pedimos esto?</p>
+            <p>
+                Este conductor ya está registrado en la flota, pero todavía no tiene una cuenta
+                de acceso: sin ella no puede iniciar sesión ni ver sus rutas asignadas.
+            </p>
+            <p>
+                El nombre de usuario y contraseña permiten que el conductor acceda desde su
+                propio teléfono.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

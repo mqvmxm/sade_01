@@ -8,7 +8,7 @@ import unicodedata
 from datetime import date, datetime, timedelta
 from functools import wraps
 
-from flask import Blueprint, Response, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, Response, abort, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import case
 from sqlalchemy.exc import IntegrityError
@@ -514,6 +514,73 @@ def conductores_editar(id_conductor):
         conductor=_conductor_para_formulario(conductor),
         id_conductor=id_conductor,
     )
+
+
+@admin.route("/conductores/<int:id_conductor>/crear-cuenta", methods=["GET", "POST"])
+@admin_required
+def conductores_crear_cuenta(id_conductor):
+    """Crea la cuenta de acceso Usuario para un Conductor que ya existía sin
+    una (badge "Sin cuenta" en conductores_lista, RF-1.1 aplicado
+    retroactivamente). Distinto de conductores_nuevo(), donde Conductor y
+    Usuario se crean juntos en la misma transacción: aquí el Conductor ya
+    existe de antes y solo falta darle acceso.
+
+    Solo aplica si el conductor todavía NO tiene ninguna cuenta vinculada:
+    si ya tiene una, esta no es la ruta para tocarla (eso es
+    conductores_editar + _guardar_email_cuenta), así que responde 404.
+    """
+    conductor = Conductor.query.get_or_404(id_conductor)
+
+    if Usuario.query.filter_by(id_conductor=conductor.id_conductor).first() is not None:
+        abort(404)
+
+    if request.method == "POST":
+        datos_cuenta = _datos_cuenta_nueva_desde_formulario()
+        if datos_cuenta is None:
+            return render_template(
+                "admin/conductores/crear_cuenta.html", conductor=conductor, formulario=request.form
+            )
+
+        usuario = Usuario(
+            nombre=conductor.nombre,
+            nombre_usuario=datos_cuenta["nombre_usuario"],
+            email=datos_cuenta["email"],
+            rol="conductor",
+            id_conductor=conductor.id_conductor,
+        )
+        usuario.set_password(datos_cuenta["contrasena"])
+
+        try:
+            db.session.add(usuario)
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            flash(
+                f"Ya existe una cuenta con el nombre de usuario '{datos_cuenta['nombre_usuario']}'.",
+                "error",
+            )
+            return render_template(
+                "admin/conductores/crear_cuenta.html", conductor=conductor, formulario=request.form
+            )
+
+        bitacora = Bitacora(
+            id_usuario=current_user.id_usuario,
+            accion="alta_cuenta_conductor_retroactiva",
+            descripcion=(
+                f"Cuenta de acceso creada de forma retroactiva para el conductor "
+                f"'{conductor.nombre}' (usuario '{usuario.nombre_usuario}') por "
+                f"{current_user.nombre}."
+            ),
+            tabla_afectada="usuarios",
+            registro_id=usuario.id_usuario,
+        )
+        db.session.add(bitacora)
+        db.session.commit()
+
+        flash(f"Cuenta de acceso creada correctamente para '{conductor.nombre}'.", "success")
+        return redirect(url_for("admin.conductores_lista"))
+
+    return render_template("admin/conductores/crear_cuenta.html", conductor=conductor, formulario=None)
 
 
 @admin.route("/mecanicos")
