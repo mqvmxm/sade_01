@@ -5,7 +5,18 @@
 {% block active_page %}reportes_averia{% endblock %}
 
 {% block admin_content %}
-<p class="page-title mb-4">Reportes de avería</p>
+<div class="d-flex justify-content-between align-items-center mb-4 gap-3">
+    <p class="page-title mb-0">Reportes de avería</p>
+    <form method="POST" action="{{ url_for('admin.reportes_averia_archivar') }}" id="form-archivar-reportes" class="d-flex align-items-center gap-2">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <select class="form-select form-select-sm" name="meses" id="select-meses-archivar" style="width: auto;">
+            <option value="4">Más de 4 meses</option>
+            <option value="8">Más de 8 meses</option>
+            <option value="12">Más de 12 meses</option>
+        </select>
+        <button type="submit" class="btn btn-outline-secondary btn-sm text-nowrap">Archivar reportes antiguos</button>
+    </form>
+</div>
 
 {% if reportes %}
 <div class="table-responsive">
@@ -43,4 +54,21 @@
 {% else %}
 <p class="text-muted">No hay reportes de avería registrados todavía.</p>
 {% endif %}
+
+<script>
+    (function () {
+        var formulario = document.getElementById('form-archivar-reportes');
+        var selectMeses = document.getElementById('select-meses-archivar');
+        formulario.addEventListener('submit', function (evento) {
+            var meses = selectMeses.value;
+            var confirmado = confirm(
+                '¿Archivar todos los reportes de más de ' + meses + ' meses? ' +
+                'Esto no los borra, solo los oculta de esta lista.'
+            );
+            if (!confirmado) {
+                evento.preventDefault();
+            }
+        });
+    })();
+</script>
 {% endblock %}

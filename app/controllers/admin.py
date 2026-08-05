@@ -1338,7 +1338,11 @@ def alertas_lista():
 @admin.route("/reportes-averia")
 @admin_required
 def reportes_averia_lista():
-    """Lista todos los reportes de avería registrados por mecánica (RF-5.4).
+    """Lista los reportes de avería sin archivar registrados por mecánica
+    (RF-5.4). Por default solo muestra archivado_en IS NULL: un reporte
+    archivado no se borra (ver reportes_averia_archivar), solo se oculta de
+    esta lista -- el Historial (_construir_eventos_historial) lo sigue
+    encontrando sin importar este filtro, ver esa función.
 
     No hay infraestructura de tiempo real: esta vista simplemente consulta la
     BD en cada carga, igual que Vehículos y Viajes activos.
@@ -1349,10 +1353,61 @@ def reportes_averia_lista():
             joinedload(ReporteAveria.viaje),
             joinedload(ReporteAveria.usuario),
         )
+        .filter(ReporteAveria.archivado_en.is_(None))
         .order_by(ReporteAveria.registrado_en.desc())
         .all()
     )
     return render_template("admin/reportes_averia/lista.html", reportes=reportes)
+
+
+@admin.route("/reportes-averia/archivar", methods=["POST"])
+@admin_required
+def reportes_averia_archivar():
+    """Archiva (no borra) los reportes de avería más viejos que N meses
+    (RF-5.4, punto 1 de la profesora): oculta reportes viejos de la lista
+    operativa sin perder el dato para el Historial ni para auditoría.
+
+    El corte de "N meses" se aproxima como N*30 días -- no hay una librería
+    de fechas calendáricas en el proyecto (ver requirements.txt) y para este
+    filtro, pensado para limpieza visual y no para un reporte contable, la
+    aproximación es suficiente.
+    """
+    meses_validos = {4, 8, 12}
+    meses = request.form.get("meses", type=int)
+    if meses not in meses_validos:
+        flash("Selecciona un periodo válido para archivar (4, 8 o 12 meses).", "error")
+        return redirect(url_for("admin.reportes_averia_lista"))
+
+    fecha_corte = datetime.now() - timedelta(days=meses * 30)
+    reportes_a_archivar = ReporteAveria.query.filter(
+        ReporteAveria.registrado_en < fecha_corte,
+        ReporteAveria.archivado_en.is_(None),
+    ).all()
+
+    ahora = datetime.now()
+    for reporte in reportes_a_archivar:
+        reporte.archivado_en = ahora
+
+    bitacora = Bitacora(
+        id_usuario=current_user.id_usuario,
+        accion="archivar_reportes_averia",
+        descripcion=(
+            f"{len(reportes_a_archivar)} reporte(s) de avería anteriores a "
+            f"{meses} meses ({fecha_corte.strftime('%d/%m/%Y')}) archivados por "
+            f"{current_user.nombre}."
+        ),
+        tabla_afectada="reportes_averia",
+        # registro_id es NOT NULL pero esta acción afecta a varios reportes a
+        # la vez, no a uno solo: se usa 0 como valor centinela (ningún
+        # id_reporte real es 0) porque no hay un único registro al que
+        # apuntar; la descripción ya trae el conteo exacto.
+        registro_id=0,
+    )
+    db.session.add(bitacora)
+    db.session.commit()
+
+    flash(f"Se archivaron {len(reportes_a_archivar)} reporte(s) de avería.", "success")
+    return redirect(url_for("admin.reportes_averia_lista"))
 
 
 def _tipo_y_cierre_de_viaje_cerrado(viaje, reportes_por_viaje, forzado_por_viaje, manual_por_viaje):

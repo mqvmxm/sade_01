@@ -28,6 +28,10 @@ class ReporteAveria(db.Model):
     descripcion = db.Column(db.Text, nullable=False)
     estado_vehiculo_prev = db.Column(db.String(20), nullable=False)
     registrado_en = db.Column(db.DateTime, nullable=False, default=datetime.now)
+    # NULL = visible en la lista normal; con fecha = archivado (oculto de la
+    # lista por default, pero conservado para el Historial, ver
+    # admin.reportes_averia_archivar y admin._construir_eventos_historial).
+    archivado_en = db.Column(db.DateTime, nullable=True)
 
     viaje = db.relationship("Viaje", backref=db.backref("reportes_averia", lazy=True))
     vehiculo = db.relationship(
