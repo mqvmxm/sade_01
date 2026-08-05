@@ -359,16 +359,59 @@ def dashboard_estado():
     )
 
 
+_ETIQUETA_GRUPO_CONDUCTOR = {
+    0: "Licencia vigente",
+    1: "Licencia próxima a vencer",
+    2: "Licencia vencida",
+    3: "Cuenta inactiva o sin vincular",
+}
+
+
+def _prioridad_orden_conductor(conductor):
+    """Prioridad de orden por default de conductores_lista (orden lógico de
+    UX, no un RF): primero las cuentas activas, agrupadas entre sí por
+    vigencia de licencia (vigente -> próxima a vencer -> vencida); al final,
+    en un solo grupo sin importar la licencia, las cuentas inactivas o sin
+    cuenta vinculada -ninguna de las dos puede iniciar sesión de todas
+    formas, así que no vale la pena subdividirlas por licencia.
+
+    Reutiliza licencia_vigente()/licencia_proxima_a_vencer() del modelo
+    (no son columnas, son métodos calculados) en vez de duplicar esa lógica
+    aquí: por eso el orden se resuelve en Python después de traer la lista,
+    no con un ORDER BY de SQL.
+    """
+    cuenta = conductor.usuarios[0] if conductor.usuarios else None
+    if cuenta is None or not cuenta.activo:
+        return 3
+    if not conductor.licencia_vigente():
+        return 2
+    if conductor.licencia_proxima_a_vencer():
+        return 1
+    return 0
+
+
+def _clave_orden_conductor(conductor):
+    return (_prioridad_orden_conductor(conductor), _normalizar_busqueda(conductor.nombre))
+
+
 @admin.route("/conductores")
 @admin_required
 def conductores_lista():
     """Lista los conductores con el estado de vigencia de su licencia (RF-2.3),
-    con 4 tarjetas de resumen y un buscador simple por nombre (?buscar=).
+    con 4 tarjetas de resumen, un buscador simple por nombre (?buscar=) y un
+    filtro rápido por estado de cuenta (?estado_cuenta=activos|inactivos),
+    combinables entre sí.
 
     Los conteos se calculan sobre TODOS los conductores (no sobre el
-    resultado ya filtrado por ?buscar=), para que las tarjetas reflejen
-    siempre el estado real de la flota completa sin importar la búsqueda
-    activa -igual que en el mockup, donde los números no cambian al buscar.
+    resultado ya filtrado), para que las tarjetas reflejen siempre el estado
+    real de la flota completa sin importar los filtros activos -igual que
+    en el mockup, donde los números no cambian al buscar.
+
+    El orden por default agrupa por prioridad operativa (ver
+    _prioridad_orden_conductor) y alfabético por nombre dentro de cada
+    grupo; se resuelve siempre en Python, incluso cuando hay filtros
+    activos, para que el orden se sienta consistente sea cual sea el
+    resultado visible.
     """
     todos = Conductor.query.order_by(Conductor.nombre).all()
 
@@ -386,14 +429,28 @@ def conductores_lista():
     if buscar:
         buscar_normalizado = _normalizar_busqueda(buscar)
         conductores = [
-            c for c in todos if buscar_normalizado in _normalizar_busqueda(c.nombre)
+            c for c in conductores if buscar_normalizado in _normalizar_busqueda(c.nombre)
         ]
+
+    estado_cuenta = request.args.get("estado_cuenta", "").strip()
+    if estado_cuenta == "activos":
+        conductores = [c for c in conductores if c.usuarios and c.usuarios[0].activo]
+    elif estado_cuenta == "inactivos":
+        conductores = [c for c in conductores if not (c.usuarios and c.usuarios[0].activo)]
+
+    conductores = sorted(conductores, key=_clave_orden_conductor)
+    grupo_conductor = {
+        conductor.id_conductor: _ETIQUETA_GRUPO_CONDUCTOR[_prioridad_orden_conductor(conductor)]
+        for conductor in conductores
+    }
 
     return render_template(
         "admin/conductores/lista.html",
         conductores=conductores,
         conteos=conteos,
         buscar=buscar,
+        estado_cuenta=estado_cuenta,
+        grupo_conductor=grupo_conductor,
     )
 
 
@@ -812,6 +869,30 @@ def cuentas_cambiar_estado(id_usuario):
     return redirect(url_for(destino))
 
 
+_PRIORIDAD_ESTADO_VEHICULO = {"disponible": 0, "en_ruta": 1, "en_taller": 2}
+_ETIQUETA_GRUPO_VEHICULO = {
+    "disponible": "Disponibles",
+    "en_ruta": "En ruta",
+    "en_taller": "En taller",
+}
+
+
+def _clave_orden_vehiculo(vehiculo):
+    """Orden por default de vehiculos_lista (orden lógico de UX, no un RF):
+    Disponibles primero -son los que el admin necesita ver para asignar una
+    ruta nueva-, luego En ruta, luego En taller; alfabético por placa dentro
+    de cada grupo. `estado` sí es una columna directa, así que a diferencia
+    de conductores_lista esto podría resolverse con SQL, pero se deja en
+    Python para no mezclar dos técnicas de orden distintas entre ambas
+    listas -la función ya trae `todos` completo a Python de todas formas
+    para calcular los conteos.
+    """
+    return (
+        _PRIORIDAD_ESTADO_VEHICULO.get(vehiculo.estado, 99),
+        _normalizar_busqueda(vehiculo.placas),
+    )
+
+
 @admin.route("/vehiculos")
 @admin_required
 def vehiculos_lista():
@@ -819,7 +900,8 @@ def vehiculos_lista():
     resumen y un buscador simple por placa (?buscar=).
 
     Igual que en conductores_lista, los conteos se calculan sobre TODOS los
-    vehículos, no sobre el resultado ya filtrado por ?buscar=.
+    vehículos, no sobre el resultado ya filtrado por ?buscar=. El orden por
+    default agrupa por estado operativo (ver _clave_orden_vehiculo).
     """
     todos = Vehiculo.query.order_by(Vehiculo.placas).all()
 
@@ -835,14 +917,21 @@ def vehiculos_lista():
     if buscar:
         buscar_normalizado = _normalizar_busqueda(buscar)
         vehiculos = [
-            v for v in todos if buscar_normalizado in _normalizar_busqueda(v.placas)
+            v for v in vehiculos if buscar_normalizado in _normalizar_busqueda(v.placas)
         ]
+
+    vehiculos = sorted(vehiculos, key=_clave_orden_vehiculo)
+    grupo_vehiculo = {
+        vehiculo.id_vehiculo: _ETIQUETA_GRUPO_VEHICULO.get(vehiculo.estado, "Otro")
+        for vehiculo in vehiculos
+    }
 
     return render_template(
         "admin/vehiculos/lista.html",
         vehiculos=vehiculos,
         conteos=conteos,
         buscar=buscar,
+        grupo_vehiculo=grupo_vehiculo,
     )
 
 

@@ -24,14 +24,20 @@
 </div>
 
 <div class="d-flex justify-content-between align-items-center mb-4 gap-3">
-    <form method="GET" class="flex-shrink-0" style="width: 300px;">
+    <form method="GET" class="d-flex gap-2 flex-shrink-0">
         <input
             type="text"
             name="buscar"
             class="form-control"
             placeholder="🔍 Buscar conductor"
             value="{{ buscar }}"
+            style="width: 260px;"
         >
+        <select name="estado_cuenta" class="form-select" onchange="this.form.submit()" style="width: auto;">
+            <option value="" {{ 'selected' if not estado_cuenta }}>Todos</option>
+            <option value="activos" {{ 'selected' if estado_cuenta == 'activos' }}>Activos</option>
+            <option value="inactivos" {{ 'selected' if estado_cuenta == 'inactivos' }}>Inactivos</option>
+        </select>
     </form>
     <a href="{{ url_for('admin.conductores_nuevo') }}" class="btn btn-primary text-nowrap">
         + Nuevo conductor
@@ -55,6 +61,11 @@
         <tbody>
             {% for conductor in conductores %}
             {% set cuenta = conductor.usuarios[0] if conductor.usuarios else None %}
+            {% if loop.first or grupo_conductor[conductor.id_conductor] != grupo_conductor[loop.previtem.id_conductor] %}
+            <tr class="table-group-row">
+                <td colspan="7" class="stat-card-label">{{ grupo_conductor[conductor.id_conductor] }}</td>
+            </tr>
+            {% endif %}
             <tr>
                 <td>{{ conductor.nombre }}</td>
                 <td>{{ conductor.telefono }}</td>
@@ -113,8 +124,12 @@
 </div>
 {% else %}
 <p class="text-muted">
-    {% if buscar %}
+    {% if buscar and estado_cuenta %}
+        Ningún conductor coincide con "{{ buscar }}" y el filtro de cuenta aplicado.
+    {% elif buscar %}
         Ningún conductor coincide con "{{ buscar }}".
+    {% elif estado_cuenta %}
+        Ningún conductor coincide con el filtro de cuenta aplicado.
     {% else %}
         No hay conductores registrados todavía.
     {% endif %}

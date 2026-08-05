@@ -357,6 +357,17 @@
             background-color: rgba(23, 66, 63, 0.06);
         }
 
+        /* Fila separadora de grupo dentro de una tabla ordenada por
+           secciones (Conductores y Vehículos, ver admin.conductores_lista /
+           admin.vehiculos_lista): reutiliza el mismo look de etiqueta que
+           ya usan las stat-cards (.stat-card-label) para que el orden por
+           grupos se sienta intencional, no solo un salto raro en la tabla. */
+        tr.table-group-row td {
+            padding-top: 1.1rem;
+            border-top: 2px solid var(--color-card-border);
+            background-color: transparent !important;
+        }
+
         /* Placa de vehiculo como "pill" oscura (tabla de Vehiculos), en vez
            de texto plano. Reutiliza --color-text, que ya es el mismo #1c1c21. */
         .placa-pill {

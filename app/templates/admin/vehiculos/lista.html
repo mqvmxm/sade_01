@@ -53,6 +53,11 @@
         </thead>
         <tbody>
             {% for vehiculo in vehiculos %}
+            {% if loop.first or grupo_vehiculo[vehiculo.id_vehiculo] != grupo_vehiculo[loop.previtem.id_vehiculo] %}
+            <tr class="table-group-row">
+                <td colspan="6" class="stat-card-label">{{ grupo_vehiculo[vehiculo.id_vehiculo] }}</td>
+            </tr>
+            {% endif %}
             <tr>
                 <td><span class="placa-pill">{{ vehiculo.placas }}</span></td>
                 <td>{{ vehiculo.marca }}</td>
