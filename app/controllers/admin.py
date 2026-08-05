@@ -23,6 +23,8 @@ from app.models.reporte_averia import ReporteAveria
 from app.models.usuario import Usuario
 from app.models.vehiculo import Vehiculo
 from app.models.viaje import Viaje
+from app.services.correo import enviar_correo
+from app.utils import validar_datos_viaje
 
 VIAJE_ESTADOS_CERRABLES_POR_ADMIN = ("activo", "alerta", "emergencia")
 
@@ -953,11 +955,11 @@ def _detalle_viaje(viaje):
 
     # El Figma muestra "check-in con licencia vigente" como un paso separado
     # de la línea de tiempo, pero en el modelo real esa verificación ocurre
-    # dentro de la misma transacción de check-in (RF-6.2, ver
-    # conductor.py:viajes_nuevo) y no se guarda como un timestamp propio: no
-    # hay un segundo dato real que mostrar. Se omite en vez de inventar una
-    # hora que no existe; "Viaje iniciado" (hora_salida) ya representa ese
-    # instante, licencia verificada incluida.
+    # dentro de la misma transacción de inicio de viaje (RF-6.2, ver
+    # conductor.py:viajes_iniciar) y no se guarda como un timestamp propio:
+    # no hay un segundo dato real que mostrar. Se omite en vez de inventar
+    # una hora que no existe; "Viaje iniciado" (hora_salida) ya representa
+    # ese instante, licencia verificada incluida.
 
     alertas_del_viaje = (
         Alerta.query.filter_by(id_viaje=viaje.id_viaje).order_by(Alerta.generada_en).all()
@@ -1075,6 +1077,195 @@ def viajes_cerrar_forzado(id_viaje):
 
     flash(f"Viaje #{viaje.id_viaje} cerrado de forma forzada.", "success")
     return redirect(url_for("admin.viajes_lista"))
+
+
+def _conductores_disponibles_para_programar():
+    """Conductores activos con licencia vigente, aptos para que el admin les
+    asigne una ruta nueva (RF-3). Un conductor con licencia vencida no debe
+    ni aparecer en el selector -RF-6.2 se refuerza aquí, además de al
+    iniciar el viaje (ver conductor.viajes_iniciar)."""
+    return [
+        c
+        for c in Conductor.query.filter_by(activo=True).order_by(Conductor.nombre).all()
+        if c.licencia_vigente()
+    ]
+
+
+def _vehiculos_disponibles_para_programar():
+    """Vehículos aptos para asignar a una ruta nueva: solo 'disponible'."""
+    return Vehiculo.query.filter_by(estado="disponible").order_by(Vehiculo.placas).all()
+
+
+def _eta_min_programar():
+    """Ayuda de UX para el atributo min del input datetime-local de ETA (ver
+    validar_datos_viaje, que es la validación real): mismo umbral de 10
+    minutos, calculado en el momento de renderizar la página."""
+    return (datetime.now() + timedelta(minutes=10)).strftime("%Y-%m-%dT%H:%M")
+
+
+@admin.route("/viajes/programar", methods=["GET", "POST"])
+@admin_required
+def viajes_programar():
+    """Programa una ruta nueva: el admin elige conductor + vehículo +
+    origen/destino/ETA, y el viaje queda en estado 'programado' hasta que el
+    conductor lo inicie con un clic desde su dashboard (RF-3).
+    """
+    if request.method == "POST":
+        contexto_formulario = {
+            "conductores": _conductores_disponibles_para_programar(),
+            "vehiculos": _vehiculos_disponibles_para_programar(),
+            "formulario": request.form,
+            "eta_min": _eta_min_programar(),
+        }
+
+        conductor = Conductor.query.get(request.form.get("id_conductor", type=int))
+        if conductor is None or not conductor.activo or not conductor.licencia_vigente():
+            flash("Selecciona un conductor activo con licencia vigente.", "error")
+            return render_template("admin/viajes/programar.html", **contexto_formulario)
+
+        vehiculo = Vehiculo.query.get(request.form.get("id_vehiculo", type=int))
+        if vehiculo is None or vehiculo.estado != "disponible":
+            flash("Selecciona un vehículo disponible.", "error")
+            return render_template("admin/viajes/programar.html", **contexto_formulario)
+
+        origen, destino, eta, error = validar_datos_viaje(
+            request.form.get("origen"), request.form.get("destino"), request.form.get("eta")
+        )
+        if error:
+            flash(error, "error")
+            return render_template("admin/viajes/programar.html", **contexto_formulario)
+
+        # Mismo espíritu que RF-3.6: ni el conductor ni el vehículo pueden
+        # tener ya otro viaje sin cerrar (programado, activo, en alerta o en
+        # emergencia) antes de programarles uno nuevo.
+        conflicto = Viaje.query.filter(
+            db.or_(
+                Viaje.id_conductor == conductor.id_conductor,
+                Viaje.id_vehiculo == vehiculo.id_vehiculo,
+            ),
+            Viaje.estado.in_(["programado", "activo", "alerta", "emergencia"]),
+        ).first()
+        if conflicto is not None:
+            flash("El conductor o el vehículo seleccionados ya tienen un viaje sin cerrar.", "error")
+            return render_template("admin/viajes/programar.html", **contexto_formulario)
+
+        # hora_salida es NOT NULL en el modelo y esa restricción no se toca:
+        # se usa la hora de programación como valor temporal, que se
+        # sobreescribe con la hora real cuando el conductor inicia el viaje
+        # (ver conductor.viajes_iniciar).
+        viaje = Viaje(
+            id_conductor=conductor.id_conductor,
+            id_vehiculo=vehiculo.id_vehiculo,
+            origen=origen,
+            destino=destino,
+            hora_salida=datetime.now(),
+            eta=eta,
+            estado="programado",
+        )
+
+        try:
+            db.session.add(viaje)
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            flash("El conductor o el vehículo seleccionados ya tienen un viaje sin cerrar.", "error")
+            return render_template("admin/viajes/programar.html", **contexto_formulario)
+
+        usuario_conductor = Usuario.query.filter_by(id_conductor=conductor.id_conductor).first()
+        if usuario_conductor is not None and usuario_conductor.email:
+            enviar_correo(
+                usuario_conductor.email,
+                "Nueva ruta asignada — S.A.D.E.",
+                (
+                    f"Hola {conductor.nombre},\n\n"
+                    "Se te asignó una nueva ruta:\n"
+                    f"Origen: {origen}\n"
+                    f"Destino: {destino}\n"
+                    f"ETA: {eta.strftime('%d/%m/%Y %H:%M')}\n\n"
+                    "Inicia sesión en S.A.D.E. y da clic en \"Iniciar viaje\" cuando estés listo para salir."
+                ),
+            )
+            # Un fallo de envío (correo mal configurado, SMTP caído) no debe
+            # romper la programación de la ruta: ya quedó guardada en BD, que
+            # es la fuente de verdad; el correo es solo un aviso adicional.
+
+        bitacora = Bitacora(
+            id_usuario=current_user.id_usuario,
+            accion="ruta_programada",
+            descripcion=(
+                f"Ruta programada para el conductor {conductor.nombre} con el vehículo "
+                f"{vehiculo.placas} ({origen} → {destino}, ETA {eta.strftime('%d/%m/%Y %H:%M')}) "
+                f"por {current_user.nombre}."
+            ),
+            tabla_afectada="viajes",
+            registro_id=viaje.id_viaje,
+        )
+        db.session.add(bitacora)
+        db.session.commit()
+
+        flash(f"Ruta programada correctamente para {conductor.nombre}.", "success")
+        return redirect(url_for("admin.viajes_programadas"))
+
+    return render_template(
+        "admin/viajes/programar.html",
+        conductores=_conductores_disponibles_para_programar(),
+        vehiculos=_vehiculos_disponibles_para_programar(),
+        formulario=None,
+        eta_min=_eta_min_programar(),
+    )
+
+
+@admin.route("/viajes/programadas")
+@admin_required
+def viajes_programadas():
+    """Lista las rutas programadas por el admin que siguen pendientes de que
+    el conductor las inicie (RF-3)."""
+    rutas = (
+        Viaje.query.options(joinedload(Viaje.conductor), joinedload(Viaje.vehiculo))
+        .filter_by(estado="programado")
+        .order_by(Viaje.eta)
+        .all()
+    )
+    return render_template("admin/viajes/programadas.html", rutas=rutas)
+
+
+@admin.route("/viajes/<int:id_viaje>/cancelar-programada", methods=["POST"])
+@admin_required
+def viajes_cancelar_programada(id_viaje):
+    """Cancela una ruta programada que el conductor todavía no inició.
+
+    Nada más depende todavía de un viaje que no ha iniciado (ni vehículo ni
+    conductor quedaron marcados de ninguna forma especial al programarlo),
+    así que se borra el registro directamente en vez de dejar un estado
+    'cancelado' que ninguna otra vista consultaría.
+    """
+    viaje = Viaje.query.get_or_404(id_viaje)
+
+    if viaje.estado != "programado":
+        flash("Esa ruta ya no está pendiente de iniciar.", "error")
+        return redirect(url_for("admin.viajes_programadas"))
+
+    descripcion = (
+        f"Ruta programada #{viaje.id_viaje} ({viaje.origen} → {viaje.destino}, "
+        f"conductor {viaje.conductor.nombre}) cancelada por {current_user.nombre} "
+        "antes de que el conductor la iniciara."
+    )
+
+    db.session.delete(viaje)
+    db.session.commit()
+
+    bitacora = Bitacora(
+        id_usuario=current_user.id_usuario,
+        accion="ruta_programada_cancelada",
+        descripcion=descripcion,
+        tabla_afectada="viajes",
+        registro_id=id_viaje,
+    )
+    db.session.add(bitacora)
+    db.session.commit()
+
+    flash("Ruta programada cancelada.", "success")
+    return redirect(url_for("admin.viajes_programadas"))
 
 
 def _detalle_alerta(alerta):

@@ -187,47 +187,34 @@
                 </div>
             </div>
 
-            <div class="card p-4">
-                <p class="section-subtitle mb-3">Registrar salida</p>
-                <form method="POST" action="{{ url_for('conductor.viajes_nuevo') }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <div class="mb-3">
-                        <label for="origen" class="form-label">Origen</label>
-                        <input
-                            type="text"
-                            class="form-control"
-                            id="origen"
-                            name="origen"
-                            minlength="3"
-                            required
-                            autofocus
-                        >
-                    </div>
-                    <div class="mb-3">
-                        <label for="destino" class="form-label">Destino</label>
-                        <input
-                            type="text"
-                            class="form-control"
-                            id="destino"
-                            name="destino"
-                            minlength="3"
-                            required
-                        >
-                    </div>
-                    <div class="mb-3">
-                        <label for="eta" class="form-label">Hora estimada de llegada</label>
-                        <input
-                            type="datetime-local"
-                            class="form-control"
-                            id="eta"
-                            name="eta"
-                            min="{{ eta_min }}"
-                            required
-                        >
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">Iniciar viaje</button>
-                </form>
-            </div>
+            {% if rutas_programadas %}
+                <p class="section-subtitle mb-3">Tus rutas asignadas</p>
+                {% for ruta in rutas_programadas %}
+                <div class="card p-4 mb-3">
+                    <dl class="row mb-3">
+                        <dt class="col-4 text-help">Origen</dt>
+                        <dd class="col-8">{{ ruta.origen }}</dd>
+
+                        <dt class="col-4 text-help">Destino</dt>
+                        <dd class="col-8">{{ ruta.destino }}</dd>
+
+                        <dt class="col-4 text-help">ETA</dt>
+                        <dd class="col-8">{{ ruta.eta.strftime('%d/%m/%Y %H:%M') }}</dd>
+
+                        <dt class="col-4 text-help">Vehículo</dt>
+                        <dd class="col-8">{{ ruta.vehiculo.placas }}</dd>
+                    </dl>
+                    <form method="POST" action="{{ url_for('conductor.viajes_iniciar', id_viaje=ruta.id_viaje) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-primary w-100">Iniciar viaje</button>
+                    </form>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="card p-4">
+                    <p class="mb-0">No tienes rutas asignadas. Contacta a tu administrador.</p>
+                </div>
+            {% endif %}
         {% endif %}
     </div>
 </div>

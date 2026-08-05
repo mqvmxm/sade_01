@@ -12,10 +12,13 @@ from app import db
 class Viaje(db.Model):
     """Trayecto activo o histórico de un conductor con un vehículo (RF-3.1).
 
-    hora_salida se registra al hacer check-in (RF-3.2) y hora_llegada al
-    confirmar arribo (RF-3.3). El estado transiciona de 'activo' a
-    'completado', o a 'alerta'/'emergencia' cuando el motor asíncrono
-    (RF-3.4) detecta un retraso (RF-3.5) o se activa el botón de pánico.
+    El admin programa la ruta ('programado', conductor + vehículo + ETA) y
+    el conductor la inicia con un clic (conductor.viajes_iniciar), momento en
+    el que hora_salida se sobreescribe con la hora real y el estado pasa a
+    'activo'. hora_llegada se registra al confirmar arribo (RF-3.3). El
+    estado transiciona de 'activo' a 'completado', o a 'alerta'/'emergencia'
+    cuando el motor asíncrono (RF-3.4) detecta un retraso (RF-3.5) o se
+    activa el botón de pánico.
     """
 
     __tablename__ = "viajes"
@@ -40,7 +43,7 @@ class Viaje(db.Model):
 
     __table_args__ = (
         CheckConstraint(
-            "estado IN ('activo', 'completado', 'alerta', 'emergencia', 'cerrado_admin')",
+            "estado IN ('programado', 'activo', 'completado', 'alerta', 'emergencia', 'cerrado_admin')",
             name="ck_viajes_estado",
         ),
         # NOTA (RF-3.6, regla de integridad): la BD ya tiene un índice único

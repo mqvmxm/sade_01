@@ -41,6 +41,12 @@
                 Viajes activos
             </a>
             <a
+                class="admin-nav-link {{ 'active' if self.active_page() == 'viajes_programadas' }}"
+                href="{{ url_for('admin.viajes_programadas') }}"
+            >
+                Rutas programadas
+            </a>
+            <a
                 class="admin-nav-link {{ 'active' if self.active_page() == 'alertas' }}"
                 href="{{ url_for('admin.alertas_lista') }}"
             >

@@ -1,8 +1,10 @@
-# Blueprint del rol conductor: check-in de viajes y confirmación de llegada
-# (RF-3: Monitoreo de rutas). El botón de pánico (RF-4) vive en el blueprint
-# 'emergencia'.
+# Blueprint del rol conductor: inicio de rutas programadas por el admin y
+# confirmación de llegada (RF-3: Monitoreo de rutas). El conductor ya no
+# arma su propio check-in -eso lo hace el admin al programar la ruta, ver
+# admin.viajes_programar-, solo inicia con un clic la ruta que se le asignó.
+# El botón de pánico (RF-4) vive en el blueprint 'emergencia'.
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from functools import wraps
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
@@ -12,7 +14,6 @@ from sqlalchemy.exc import IntegrityError
 from app import db
 from app.models.alerta import Alerta
 from app.models.bitacora import Bitacora
-from app.models.vehiculo import Vehiculo
 from app.models.viaje import Viaje
 
 conductor = Blueprint("conductor", __name__)
@@ -35,10 +36,12 @@ def conductor_required(view_func):
 @conductor.route("/dashboard")
 @conductor_required
 def dashboard():
-    """Muestra el viaje activo del conductor, o el formulario de check-in (RF-3.1/3.2).
+    """Muestra el viaje activo del conductor, o sus rutas programadas
+    pendientes de iniciar (RF-3.1/3.2).
 
-    Si la licencia está vencida, el template debe bloquear el formulario de
-    check-in (RF-6.2) usando conductor.licencia_vigente().
+    Si la licencia está vencida, el template debe bloquear el inicio de
+    rutas (RF-6.2) usando conductor.licencia_vigente() -- igual criterio que
+    antes tenía el check-in.
     """
     perfil = current_user.conductor
     if perfil is None:
@@ -50,16 +53,19 @@ def dashboard():
         Viaje.estado.in_(["activo", "alerta", "emergencia"]),
     ).first()
 
-    # Ayuda de UX para el atributo min del input datetime-local del check-in
-    # (ver viajes_nuevo, que es la validación real): mismo umbral de 10
-    # minutos, calculado en el momento de renderizar la página.
-    eta_min = (datetime.now() + timedelta(minutes=10)).strftime("%Y-%m-%dT%H:%M")
+    rutas_programadas = []
+    if viaje_activo is None:
+        rutas_programadas = (
+            Viaje.query.filter_by(id_conductor=perfil.id_conductor, estado="programado")
+            .order_by(Viaje.eta)
+            .all()
+        )
 
     return render_template(
         "conductor/dashboard.html",
         conductor=perfil,
         viaje_activo=viaje_activo,
-        eta_min=eta_min,
+        rutas_programadas=rutas_programadas,
     )
 
 
@@ -101,115 +107,78 @@ def historial():
     )
 
 
-@conductor.route("/viajes/nuevo", methods=["POST"])
+@conductor.route("/viajes/<int:id_viaje>/iniciar", methods=["POST"])
 @conductor_required
-def viajes_nuevo():
-    """Registra el check-in de un viaje para el conductor autenticado (RF-3.2).
+def viajes_iniciar(id_viaje):
+    """Inicia una ruta programada por el admin (RF-3.2): el conductor ya no
+    arma su propio check-in, solo confirma con un clic el inicio de una ruta
+    que ya le fue asignada (ver admin.viajes_programar).
 
-    Simplificación temporal: el conductor todavía no elige vehículo
-    manualmente en la UI, así que se asigna el primer Vehiculo con estado
-    'disponible' que se encuentre. Cuando exista selección real de vehículo,
-    esta asignación automática debe reemplazarse.
+    Revalida todo lo que en teoría ya se validó al programar, porque el
+    tiempo entre programar e iniciar puede volver inválido lo que en su
+    momento era correcto: licencia vencida mientras tanto (RF-6.2, nunca se
+    confía en que ya se validó antes) o vehículo que dejó de estar
+    disponible por otra causa.
     """
     perfil = current_user.conductor
-    if perfil is None:
-        flash("Tu cuenta no tiene un perfil de conductor asociado.", "error")
+    viaje = Viaje.query.get_or_404(id_viaje)
+
+    if perfil is None or viaje.id_conductor != perfil.id_conductor:
+        flash("No tienes permiso para iniciar ese viaje.", "error")
         return redirect(url_for("conductor.dashboard"))
 
-    # Nunca confiar solo en el frontend: se revalida la licencia (RF-6.2).
+    if viaje.estado != "programado":
+        flash("Esa ruta ya no está pendiente de iniciar.", "error")
+        return redirect(url_for("conductor.dashboard"))
+
     if not perfil.licencia_vigente():
         flash("No puedes iniciar un viaje: tu licencia está vencida.", "error")
         return redirect(url_for("conductor.dashboard"))
 
-    # Un conductor no puede tener dos viajes sin cerrar a la vez: bloquea el
-    # check-in si ya tiene uno en 'activo', 'alerta' o 'emergencia' (evita
-    # duplicados como el que dejó un viaje viejo sin confirmar llegada).
+    # Un conductor no puede tener dos viajes sin cerrar a la vez (mismo
+    # espíritu que antes tenía el check-in): si otra ruta suya ya está en
+    # curso -por ejemplo iniciada desde otra pestaña-, bloquea esta.
     viaje_sin_cerrar = Viaje.query.filter(
         Viaje.id_conductor == perfil.id_conductor,
+        Viaje.id_viaje != viaje.id_viaje,
         Viaje.estado.in_(["activo", "alerta", "emergencia"]),
     ).first()
     if viaje_sin_cerrar is not None:
         flash("Ya tienes un viaje sin cerrar. Confirma la llegada antes de iniciar uno nuevo.", "error")
         return redirect(url_for("conductor.dashboard"))
 
-    origen = request.form.get("origen", "").strip()
-    destino = request.form.get("destino", "").strip()
-    if not origen or not destino:
-        flash("Debes indicar origen y destino.", "error")
+    if viaje.vehiculo.estado != "disponible":
+        flash("El vehículo asignado ya no está disponible.", "error")
         return redirect(url_for("conductor.dashboard"))
 
-    # El HTML ya pone minlength=3 y bloquea números puros como ayuda de UX
-    # (ver conductor/dashboard.html), pero esa validación nunca es de fiar
-    # por sí sola: se repite aquí porque es la única que de verdad protege
-    # contra un formulario mandado sin pasar por el HTML.
-    if len(origen) < 3 or len(destino) < 3:
-        flash("Origen y destino deben tener al menos 3 caracteres.", "error")
-        return redirect(url_for("conductor.dashboard"))
+    viaje.hora_salida = datetime.now()
+    viaje.estado = "activo"
+    viaje.vehiculo.estado = "en_ruta"
 
-    if origen.isdigit() or destino.isdigit():
-        flash("Origen y destino deben ser un nombre de lugar válido, no solo números.", "error")
-        return redirect(url_for("conductor.dashboard"))
-
-    # Insensible a mayúsculas y a diferencias de espaciado (" La  Paz " vs
-    # "la paz" deben contarse como el mismo lugar).
-    if " ".join(origen.split()).casefold() == " ".join(destino.split()).casefold():
-        flash("Origen y destino no pueden ser el mismo lugar.", "error")
-        return redirect(url_for("conductor.dashboard"))
-
-    eta_texto = request.form.get("eta", "")
-    try:
-        eta = datetime.strptime(eta_texto, "%Y-%m-%dT%H:%M")
-    except ValueError:
-        flash("La hora estimada de llegada (ETA) no es válida.", "error")
-        return redirect(url_for("conductor.dashboard"))
-
-    # Mismo criterio que el resto de la validación: el atributo min del
-    # input datetime-local (ver conductor/dashboard.html) es solo ayuda de
-    # UX, la hora del servidor es la única fuente de verdad.
-    if eta < datetime.now() + timedelta(minutes=10):
-        flash(
-            "La hora estimada de llegada debe ser al menos 10 minutos después de ahora.",
-            "error",
-        )
-        return redirect(url_for("conductor.dashboard"))
-
-    vehiculo = Vehiculo.query.filter_by(estado="disponible").first()
-    if vehiculo is None:
-        flash("No hay vehículos disponibles en este momento.", "error")
-        return redirect(url_for("conductor.dashboard"))
-
-    # RF-3.6 (regla de integridad): un vehículo no puede tener dos viajes
-    # 'activo' a la vez. En teoría ya se descartó al filtrar por 'disponible',
-    # pero se revalida explícitamente antes del INSERT; la BD también lo
-    # protege con un índice único parcial (idx_viaje_activo_unico) como
-    # última defensa ante condiciones de carrera (ver excepto IntegrityError).
-    viaje_activo_existente = Viaje.query.filter_by(
-        id_vehiculo=vehiculo.id_vehiculo, estado="activo"
-    ).first()
-    if viaje_activo_existente is not None:
-        flash("El vehículo asignado ya tiene un viaje activo.", "error")
-        return redirect(url_for("conductor.dashboard"))
-
-    viaje = Viaje(
-        id_conductor=perfil.id_conductor,
-        id_vehiculo=vehiculo.id_vehiculo,
-        origen=origen,
-        destino=destino,
-        hora_salida=datetime.now(),
-        eta=eta,
-        estado="activo",
+    bitacora = Bitacora(
+        id_usuario=current_user.id_usuario,
+        accion="ruta_iniciada",
+        descripcion=(
+            f"Conductor {perfil.nombre} inició el viaje #{viaje.id_viaje} "
+            f"({viaje.origen} → {viaje.destino})."
+        ),
+        tabla_afectada="viajes",
+        registro_id=viaje.id_viaje,
     )
-    vehiculo.estado = "en_ruta"
+    db.session.add(bitacora)
 
+    # RF-3.6 (regla de integridad): la BD protege con un índice único
+    # parcial (idx_viaje_activo_unico) contra dos viajes 'activo' para el
+    # mismo vehículo; última defensa ante una condición de carrera entre la
+    # revalidación de arriba y este commit.
     try:
-        db.session.add(viaje)
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
         flash("El vehículo asignado ya tiene un viaje activo.", "error")
         return redirect(url_for("conductor.dashboard"))
 
-    flash(f"Viaje iniciado correctamente hacia '{destino}'.", "success")
+    flash(f"Viaje iniciado correctamente hacia '{viaje.destino}'.", "success")
     return redirect(url_for("conductor.dashboard"))
 
 
