@@ -5,13 +5,22 @@
          {{ stat_card('Etiqueta', valor, 'Descripcion corta', 'success') }}
     color acepta: success | warning | danger | neutral (mismo vocabulario
     que badge-status en base.html).
+
+    desglose (opcional): segunda linea de texto chica debajo de la
+    descripcion, para cuando 'valor' es la suma de mas de un conteo y esa
+    composicion no es opcional mostrarla (ej. "1 mecánica · 2 de
+    seguridad" en el dashboard). Los usos existentes no lo pasan, así que
+    default None no les cambia nada.
 #}
-{% macro stat_card(etiqueta, valor, descripcion, color='neutral') %}
+{% macro stat_card(etiqueta, valor, descripcion, color='neutral', desglose=None) %}
 <div class="card stat-card-{{ color }} h-100">
     <div class="card-body">
         <p class="stat-card-label mb-1">{{ etiqueta }}</p>
         <p class="stat-card-value mb-1">{{ valor }}</p>
         <p class="text-help mb-0">{{ descripcion }}</p>
+        {% if desglose %}
+            <p class="text-help mb-0">{{ desglose }}</p>
+        {% endif %}
     </div>
 </div>
 {% endmacro %}

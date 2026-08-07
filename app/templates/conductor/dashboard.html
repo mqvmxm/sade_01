@@ -129,34 +129,46 @@
                     </div>
                 </div>
 
-                <div class="card p-3 mt-3" id="tarjeta-problema-mecanico">
+                <div class="card p-3 mt-3" id="tarjeta-reportar-incidencia">
                     <p class="mb-2" style="font-size: 12px; font-weight: 600;">
-                        ¿Tu vehículo tuvo una falla en ruta?
+                        ¿Tuviste un problema en ruta?
                     </p>
                     <button
                         type="button"
-                        id="boton-mostrar-form-mecanico"
+                        id="boton-mostrar-form-incidencia"
                         class="btn btn-warning w-100"
                     >
-                        Reportar problema mecánico
+                        Reportar incidencia
                     </button>
                     <form
                         method="POST"
-                        action="{{ url_for('conductor.reportar_problema_mecanico') }}"
-                        id="form-problema-mecanico"
+                        action="{{ url_for('conductor.reportar_incidencia') }}"
+                        id="form-reportar-incidencia"
                         class="d-none mt-2"
                     >
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <label for="descripcion-problema-mecanico" class="form-label text-help mb-1">
-                            Describe el problema (opcional)
+                        <label for="tipo-incidencia" class="form-label text-help mb-1">
+                            Tipo de incidencia
+                        </label>
+                        <select
+                            class="form-select mb-2"
+                            id="tipo-incidencia"
+                            name="tipo"
+                            required
+                        >
+                            <option value="mecanica">Falla mecánica</option>
+                            <option value="trafico">Tráfico o retraso</option>
+                        </select>
+                        <label for="descripcion-incidencia" class="form-label text-help mb-1">
+                            Describe la incidencia (opcional)
                         </label>
                         <textarea
                             class="form-control mb-2"
-                            id="descripcion-problema-mecanico"
+                            id="descripcion-incidencia"
                             name="descripcion"
                             rows="2"
                             maxlength="500"
-                            placeholder="Ej. ruido en el motor, llanta ponchada..."
+                            placeholder="Ej. ruido en el motor, tráfico pesado, accidente adelante..."
                         ></textarea>
                         <button type="submit" class="btn btn-warning w-100">Confirmar reporte</button>
                     </form>
@@ -164,8 +176,8 @@
 
                 <script>
                     (function () {
-                        var boton = document.getElementById('boton-mostrar-form-mecanico');
-                        var form = document.getElementById('form-problema-mecanico');
+                        var boton = document.getElementById('boton-mostrar-form-incidencia');
+                        var form = document.getElementById('form-reportar-incidencia');
                         if (boton && form) {
                             boton.addEventListener('click', function () {
                                 boton.classList.add('d-none');

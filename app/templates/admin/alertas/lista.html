@@ -45,6 +45,8 @@
                             {% else %}
                                 <span class="text-help">Sin ver</span>
                             {% endif %}
+                        {% elif alerta.tipo == 'incidencia_trafico' %}
+                            <span class="badge-status warning">Tráfico o retraso</span>
                         {% else %}
                             <span class="badge-status danger">Licencia vencida</span>
                         {% endif %}
@@ -73,6 +75,8 @@
                     {% else %}
                         <span class="text-help">Sin ver</span>
                     {% endif %}
+                {% elif alerta_seleccionada.tipo == 'incidencia_trafico' %}
+                    <span class="badge-status warning">Tráfico o retraso</span>
                 {% else %}
                     <span class="badge-status danger">Licencia vencida</span>
                 {% endif %}

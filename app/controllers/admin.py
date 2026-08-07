@@ -43,6 +43,7 @@ TIPO_INFO_HISTORIAL = {
     "panico": ("Aviso de emergencia", "danger", "admin.alertas_lista"),
     "licencia_vencida": ("Licencia vencida", "danger", "admin.alertas_lista"),
     "asistencia_mecanica": ("Problema mecánico", "warning", "admin.alertas_lista"),
+    "incidencia_trafico": ("Tráfico o retraso", "warning", "admin.alertas_lista"),
     "averia": ("Avería en ruta", "warning", "admin.reportes_averia_lista"),
     "cerrado_forzado": ("Viaje cerrado (forzado)", "danger", "admin.viajes_lista"),
     "completado": ("Viaje completado", "success", "admin.viajes_lista"),
@@ -288,18 +289,40 @@ def _vehiculo_para_formulario(vehiculo):
 
 
 def _conteos_dashboard():
-    """Los 4 conteos de tarjetas del panel de administrador, compartidos por
+    """Los conteos de tarjetas del panel de administrador, compartidos por
     dashboard() y dashboard_estado() para que ambos siempre reporten
     exactamente lo mismo.
+
+    La tarjeta "Emergencia activa" se compone de dos conteos separados en
+    vez de uno solo: 'emergencia_seguridad' (viajes en estado 'emergencia',
+    el pánico/RF-4 de siempre) y 'emergencia_mecanica' (alertas
+    'asistencia_mecanica' sin atender). El proyecto distingue explícitamente
+    falla mecánica de incidente de seguridad, así que el semáforo no debe
+    fundir ambos en un número sin desglose (ver dashboard(), que arma el
+    texto de desglose a partir de estos dos valores).
     """
     return {
         "activo": Viaje.query.filter_by(estado="activo").count(),
         "alerta": Viaje.query.filter_by(estado="alerta").count(),
-        "emergencia": Viaje.query.filter_by(estado="emergencia").count(),
+        "emergencia_seguridad": Viaje.query.filter_by(estado="emergencia").count(),
+        "emergencia_mecanica": Alerta.query.filter_by(
+            tipo="asistencia_mecanica", atendida=False
+        ).count(),
         "licencia_vencida": Conductor.query.filter(
             Conductor.fecha_vencimiento_lic < date.today()
         ).count(),
     }
+
+
+def _texto_desglose_emergencia(conteos):
+    """Texto tipo '1 mecánica · 2 de seguridad' para la tarjeta "Emergencia
+    activa" del dashboard (ver _conteos_dashboard).
+    """
+    mecanica = conteos["emergencia_mecanica"]
+    return (
+        f"{mecanica} mecánica{'s' if mecanica != 1 else ''} · "
+        f"{conteos['emergencia_seguridad']} de seguridad"
+    )
 
 
 @admin.route("/dashboard")
@@ -330,6 +353,7 @@ def dashboard():
     return render_template(
         "admin/dashboard.html",
         conteos=conteos,
+        desglose_emergencia=_texto_desglose_emergencia(conteos),
         viajes_en_curso=viajes_en_curso,
         alertas_recientes=alertas_recientes,
     )
@@ -1714,7 +1738,17 @@ def _construir_eventos_historial():
 
     alertas = (
         Alerta.query.options(joinedload(Alerta.conductor), joinedload(Alerta.viaje))
-        .filter(Alerta.tipo.in_(["retraso", "panico", "licencia_vencida", "asistencia_mecanica"]))
+        .filter(
+            Alerta.tipo.in_(
+                [
+                    "retraso",
+                    "panico",
+                    "licencia_vencida",
+                    "asistencia_mecanica",
+                    "incidencia_trafico",
+                ]
+            )
+        )
         .all()
     )
     for alerta in alertas:
@@ -1727,11 +1761,12 @@ def _construir_eventos_historial():
             cierre = _cierre_para_panico(alerta, reportes_por_viaje, forzado_por_viaje, manual_por_viaje)
             ruta = f"{alerta.viaje.origen} → {alerta.viaje.destino}" if alerta.viaje else "—"
             id_vehiculo = alerta.viaje.id_vehiculo if alerta.viaje else None
-        elif alerta.tipo == "asistencia_mecanica":
-            # El conductor es siempre quien la genera (RF-5): a diferencia de
-            # panico/viajes cerrados, no hay nada que derivar del cierre del
-            # viaje asociado.
-            slug, cierre = "asistencia_mecanica", "Conductor"
+        elif alerta.tipo in ("asistencia_mecanica", "incidencia_trafico"):
+            # El conductor es siempre quien las genera (RF-5 para la
+            # mecánica; informativa para el admin en el caso de tráfico): a
+            # diferencia de panico/viajes cerrados, no hay nada que derivar
+            # del cierre del viaje asociado.
+            slug, cierre = alerta.tipo, "Conductor"
             ruta = f"{alerta.viaje.origen} → {alerta.viaje.destino}" if alerta.viaje else "—"
             id_vehiculo = alerta.viaje.id_vehiculo if alerta.viaje else None
         else:  # licencia_vencida (contemplado por esquema; hoy nunca se genera)

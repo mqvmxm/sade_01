@@ -73,7 +73,13 @@
         {{ stat_card('Retraso detectado', conteos.alerta, 'Viajes que superaron su ETA', 'warning') }}
     </div>
     <div class="col-md-3">
-        {{ stat_card('Emergencia activa', conteos.emergencia, 'Avisos de pánico sin cerrar', 'danger') }}
+        {{ stat_card(
+            'Emergencia activa',
+            conteos.emergencia_mecanica + conteos.emergencia_seguridad,
+            'Fallas mecánicas y avisos de seguridad sin atender',
+            'danger',
+            desglose=desglose_emergencia
+        ) }}
     </div>
     <div class="col-md-3">
         {{ stat_card('Licencia vencida', conteos.licencia_vencida, 'Conductores con licencia expirada', 'neutral') }}
@@ -138,6 +144,8 @@
                             {% else %}
                                 <span class="text-help">Sin ver</span>
                             {% endif %}
+                        {% elif alerta.tipo == 'incidencia_trafico' %}
+                            <span class="badge-status warning">Tráfico o retraso</span>
                         {% else %}
                             <span class="badge-status danger">Licencia vencida</span>
                         {% endif %}

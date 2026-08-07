@@ -182,24 +182,45 @@ def viajes_iniciar(id_viaje):
     return redirect(url_for("conductor.dashboard"))
 
 
-@conductor.route("/reportar-problema-mecanico", methods=["POST"])
+# Mapea la opción elegida en el selector del dashboard al tipo real de
+# Alerta. 'mecanica' se comporta exactamente como el viejo
+# reportar_problema_mecanico (visible para mecánico y admin, dispara el
+# flujo de reporte de avería); 'trafico' es informativa y SOLO para el
+# admin -mecanico.vehiculos_lista filtra explícitamente por
+# tipo == 'asistencia_mecanica', así que 'incidencia_trafico' nunca aparece
+# ahí ni dispara nada de ese flujo.
+TIPOS_INCIDENCIA_CONDUCTOR = {
+    "mecanica": "asistencia_mecanica",
+    "trafico": "incidencia_trafico",
+}
+
+
+@conductor.route("/reportar-incidencia", methods=["POST"])
 @conductor_required
-def reportar_problema_mecanico():
-    """Registra un problema mecánico en ruta reportado por el conductor
-    (RF-5: gestión de flota, disparado por el conductor esta vez).
+def reportar_incidencia():
+    """Registra una incidencia en ruta reportada por el conductor: falla
+    mecánica (RF-5, gestión de flota) o tráfico/retraso (solo informativo
+    para el admin). Reemplaza al antiguo reportar_problema_mecanico() -el
+    conductor ahora elige el tipo antes de confirmar-, ver
+    TIPOS_INCIDENCIA_CONDUCTOR para el mapeo.
 
     Distinto del aviso silencioso de emergencia.py: es visible y de un solo
     clic, y deja una Alerta real en el sistema en vez de solo facilitar una
     llamada externa. Solo aplica con un viaje 'activo' o 'alerta' -- si el
     viaje ya está en 'emergencia' no se ofrece esta opción (es un problema
-    de seguridad, no mecánico), y como el filtro de abajo no incluye
-    'emergencia' entre los estados válidos, esa alerta nunca podría crearse
-    aunque el formulario llegara a enviarse por algún medio distinto del
-    botón del dashboard.
+    de seguridad, no mecánico/de tráfico), y como el filtro de abajo no
+    incluye 'emergencia' entre los estados válidos, esa alerta nunca podría
+    crearse aunque el formulario llegara a enviarse por algún medio
+    distinto del botón del dashboard.
     """
     perfil = current_user.conductor
     if perfil is None:
         flash("Tu cuenta no tiene un perfil de conductor asociado.", "error")
+        return redirect(url_for("conductor.dashboard"))
+
+    tipo = TIPOS_INCIDENCIA_CONDUCTOR.get(request.form.get("tipo", ""))
+    if tipo is None:
+        flash("Selecciona un tipo de incidencia válido.", "error")
         return redirect(url_for("conductor.dashboard"))
 
     viaje = Viaje.query.filter(
@@ -208,21 +229,40 @@ def reportar_problema_mecanico():
     ).first()
     if viaje is None:
         flash(
-            "No tienes un viaje en curso al que reportarle un problema mecánico.",
+            "No tienes un viaje en curso al que reportarle una incidencia.",
             "error",
         )
         return redirect(url_for("conductor.dashboard"))
 
     descripcion = request.form.get("descripcion", "").strip()
-    if descripcion:
-        mensaje = f"{perfil.nombre} reportó un problema mecánico en ruta: {descripcion}"
+
+    if tipo == "asistencia_mecanica":
+        if descripcion:
+            mensaje = f"{perfil.nombre} reportó un problema mecánico en ruta: {descripcion}"
+        else:
+            mensaje = f"{perfil.nombre} reportó un problema mecánico en ruta, sin más detalle."
+        accion_bitacora = "reporte_problema_mecanico_conductor"
+        descripcion_bitacora = (
+            f"Conductor {perfil.nombre} reportó un problema mecánico en el viaje "
+            f"#{viaje.id_viaje} ({viaje.origen} → {viaje.destino})."
+        )
+        mensaje_flash = "Problema mecánico reportado. El administrador fue notificado."
     else:
-        mensaje = f"{perfil.nombre} reportó un problema mecánico en ruta, sin más detalle."
+        if descripcion:
+            mensaje = f"{perfil.nombre} reportó tráfico o retraso en ruta: {descripcion}"
+        else:
+            mensaje = f"{perfil.nombre} reportó tráfico o retraso en ruta, sin más detalle."
+        accion_bitacora = "reporte_incidencia_trafico"
+        descripcion_bitacora = (
+            f"Conductor {perfil.nombre} reportó una incidencia de tráfico/retraso en el viaje "
+            f"#{viaje.id_viaje} ({viaje.origen} → {viaje.destino})."
+        )
+        mensaje_flash = "Incidencia de tráfico reportada. El administrador fue notificado."
 
     alerta = Alerta(
         id_viaje=viaje.id_viaje,
         id_conductor=perfil.id_conductor,
-        tipo="asistencia_mecanica",
+        tipo=tipo,
         prioridad=2,
         mensaje=mensaje,
         atendida=False,
@@ -232,18 +272,15 @@ def reportar_problema_mecanico():
 
     bitacora = Bitacora(
         id_usuario=current_user.id_usuario,
-        accion="reporte_problema_mecanico_conductor",
-        descripcion=(
-            f"Conductor {perfil.nombre} reportó un problema mecánico en el viaje "
-            f"#{viaje.id_viaje} ({viaje.origen} → {viaje.destino})."
-        ),
+        accion=accion_bitacora,
+        descripcion=descripcion_bitacora,
         tabla_afectada="alertas",
         registro_id=alerta.id_alerta,
     )
     db.session.add(bitacora)
     db.session.commit()
 
-    flash("Problema mecánico reportado. El administrador fue notificado.", "success")
+    flash(mensaje_flash, "success")
     return redirect(url_for("conductor.dashboard"))
 
 
