@@ -67,7 +67,18 @@
             </tr>
             {% endif %}
             <tr>
-                <td>{{ conductor.nombre }}</td>
+                <td>
+                    {{ conductor.nombre }}
+                    {% set viaje_programado = reserva_por_conductor.get(conductor.id_conductor) %}
+                    {% if viaje_programado %}
+                        <div class="mt-1">
+                            <span class="badge-status warning">Ruta programada</span>
+                            <p class="text-help mb-0">
+                                {{ viaje_programado.vehiculo.placas }} · {{ viaje_programado.destino }}
+                            </p>
+                        </div>
+                    {% endif %}
+                </td>
                 <td>{{ conductor.telefono }}</td>
                 <td>{{ conductor.num_licencia }}</td>
                 <td>{{ conductor.fecha_vencimiento_lic.strftime('%d/%m/%Y') }}</td>

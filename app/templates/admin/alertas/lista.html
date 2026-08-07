@@ -33,15 +33,22 @@
                 class="card p-3 text-decoration-none detail-list-item {{ 'active' if alerta_seleccionada and alerta.id_alerta == alerta_seleccionada.id_alerta }}"
             >
                 <div class="d-flex justify-content-between align-items-start">
-                    {% if alerta.tipo == 'retraso' %}
-                        <span class="badge-status warning">Retraso</span>
-                    {% elif alerta.tipo == 'panico' %}
-                        <span class="badge-status danger">Pánico</span>
-                    {% elif alerta.tipo == 'asistencia_mecanica' %}
-                        <span class="badge-status warning">Problema mecánico</span>
-                    {% else %}
-                        <span class="badge-status danger">Licencia vencida</span>
-                    {% endif %}
+                    <div class="d-flex align-items-center gap-1">
+                        {% if alerta.tipo == 'retraso' %}
+                            <span class="badge-status warning">Retraso</span>
+                        {% elif alerta.tipo == 'panico' %}
+                            <span class="badge-status danger">Pánico</span>
+                        {% elif alerta.tipo == 'asistencia_mecanica' %}
+                            <span class="badge-status warning">Problema mecánico</span>
+                            {% if alerta.vista %}
+                                <span class="text-help">👁 Vista</span>
+                            {% else %}
+                                <span class="text-help">Sin ver</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="badge-status danger">Licencia vencida</span>
+                        {% endif %}
+                    </div>
                     <span class="text-help">{{ alerta.generada_en.strftime('%d/%m %H:%M') }}</span>
                 </div>
                 <p class="mb-0 mt-2 section-subtitle">{{ alerta.conductor.nombre }}</p>
@@ -61,6 +68,11 @@
                     <span class="badge-status danger">Pánico</span>
                 {% elif alerta_seleccionada.tipo == 'asistencia_mecanica' %}
                     <span class="badge-status warning">Problema mecánico</span>
+                    {% if alerta_seleccionada.vista %}
+                        <span class="text-help">👁 Vista {{ alerta_seleccionada.vista_en.strftime('%d/%m %H:%M') }}</span>
+                    {% else %}
+                        <span class="text-help">Sin ver</span>
+                    {% endif %}
                 {% else %}
                     <span class="badge-status danger">Licencia vencida</span>
                 {% endif %}

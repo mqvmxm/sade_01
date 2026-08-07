@@ -8,17 +8,20 @@
 {% block admin_content %}
 <p class="page-title mb-4">Vehículos</p>
 
-<div class="row g-3 mb-4">
-    <div class="col-md-3">
+<div class="row row-cols-2 row-cols-md-5 g-3 mb-4">
+    <div class="col">
         {{ stat_card('Total', conteos.total, 'unidades en flota', 'neutral') }}
     </div>
-    <div class="col-md-3">
+    <div class="col">
         {{ stat_card('Disponibles', conteos.disponibles, 'listas para asignar', 'neutral') }}
     </div>
-    <div class="col-md-3">
+    <div class="col">
+        {{ stat_card('Reservados', conteos.reservados, 'con ruta programada', 'warning') }}
+    </div>
+    <div class="col">
         {{ stat_card('En ruta', conteos.en_ruta, 'con viaje activo', 'success') }}
     </div>
-    <div class="col-md-3">
+    <div class="col">
         {{ stat_card('En taller', conteos.en_taller, 'en mantenimiento', 'warning') }}
     </div>
 </div>
@@ -65,7 +68,13 @@
                 <td>{{ vehiculo.anio }}</td>
                 <td>
                     {% if vehiculo.estado == 'disponible' %}
-                        <span class="badge-status neutral">Disponible</span>
+                        {% set viaje_programado = reserva_por_vehiculo.get(vehiculo.id_vehiculo) %}
+                        {% if viaje_programado %}
+                            <span class="badge-status warning">Reservado</span>
+                            <p class="text-help mb-0 mt-1">Para {{ viaje_programado.conductor.nombre }}</p>
+                        {% else %}
+                            <span class="badge-status neutral">Disponible</span>
+                        {% endif %}
                     {% elif vehiculo.estado == 'en_ruta' %}
                         <span class="badge-status success">En ruta</span>
                     {% elif vehiculo.estado == 'en_taller' %}

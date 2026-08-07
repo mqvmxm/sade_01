@@ -4,7 +4,7 @@
 from datetime import datetime
 from functools import wraps
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy.orm import joinedload
 
@@ -40,6 +40,27 @@ def _viaje_activo_de(id_vehiculo):
         Viaje.id_vehiculo == id_vehiculo,
         Viaje.estado.in_(VIAJE_ESTADOS_CON_VEHICULO_EN_USO),
     ).first()
+
+
+def _tiempo_transcurrido(momento):
+    """Antigüedad de `momento` en lenguaje natural relativo a datetime.now()
+    (ej. 'hace 15 minutos', 'hace 2 horas'), para que el mecánico vea de un
+    vistazo cuánto lleva esperando una falla reportada sin atenderse.
+
+    Se calcula aquí en Python, no en el template, porque depende del
+    momento en que se abre la página, no de una columna fija del registro.
+    """
+    segundos = (datetime.now() - momento).total_seconds()
+    if segundos < 60:
+        return "hace un momento"
+    minutos = int(segundos // 60)
+    if minutos < 60:
+        return f"hace {minutos} minuto{'s' if minutos != 1 else ''}"
+    horas = int(minutos // 60)
+    if horas < 24:
+        return f"hace {horas} hora{'s' if horas != 1 else ''}"
+    dias = int(horas // 24)
+    return f"hace {dias} día{'s' if dias != 1 else ''}"
 
 
 def _alerta_mecanica_pendiente(id_viaje):
@@ -98,12 +119,68 @@ def vehiculos_lista():
             id_vehiculo = id_vehiculo_por_viaje[alerta.id_viaje]
             alertas_mecanicas_por_vehiculo.setdefault(id_vehiculo, alerta)
 
+    antiguedad_por_alerta = {
+        alerta.id_alerta: _tiempo_transcurrido(alerta.generada_en)
+        for alerta in alertas_mecanicas_por_vehiculo.values()
+    }
+
+    # Vehículos con una ruta programada pendiente de iniciar (RF-3): aunque
+    # su columna `estado` siga en 'disponible', ya están comprometidos con
+    # esa ruta y no están realmente libres (ver admin._viajes_programados,
+    # mismo criterio aplicado aquí para no duplicar consultas nuevas por
+    # cada vehículo).
+    viajes_programados = (
+        Viaje.query.filter_by(estado="programado")
+        .options(joinedload(Viaje.conductor))
+        .all()
+    )
+    reserva_por_vehiculo = {}
+    for viaje in viajes_programados:
+        reserva_por_vehiculo.setdefault(viaje.id_vehiculo, viaje)
+
     return render_template(
         "mecanico/vehiculos/lista.html",
         vehiculos=vehiculos,
         vehiculos_con_viaje_activo=vehiculos_con_viaje_activo,
         alertas_mecanicas_por_vehiculo=alertas_mecanicas_por_vehiculo,
+        antiguedad_por_alerta=antiguedad_por_alerta,
+        reserva_por_vehiculo=reserva_por_vehiculo,
     )
+
+
+@mecanico.route("/alertas/<int:id_alerta>/marcar-vista", methods=["POST"])
+@mecanico_required
+def alertas_marcar_vista(id_alerta):
+    """Marca una Alerta tipo='asistencia_mecanica' como vista (estado
+    intermedio, distinto de 'atendida': ver _alerta_mecanica_pendiente).
+
+    Solo aplica a este tipo de alerta -un mecánico no tiene por qué poder
+    tocar una alerta de pánico o retraso-, así que cualquier otro tipo
+    responde 404, igual que si la alerta no existiera.
+    """
+    alerta = Alerta.query.get_or_404(id_alerta)
+    if alerta.tipo != "asistencia_mecanica":
+        abort(404)
+
+    if not alerta.vista:
+        alerta.vista = True
+        alerta.vista_en = datetime.now()
+
+        bitacora = Bitacora(
+            id_usuario=current_user.id_usuario,
+            accion="alerta_mecanica_vista",
+            descripcion=(
+                f"{current_user.nombre} marcó como vista la alerta de problema "
+                f"mecánico #{alerta.id_alerta}."
+            ),
+            tabla_afectada="alertas",
+            registro_id=alerta.id_alerta,
+        )
+        db.session.add(bitacora)
+        db.session.commit()
+
+    flash("Alerta marcada como vista.", "success")
+    return redirect(url_for("mecanico.vehiculos_lista"))
 
 
 @mecanico.route("/vehiculos/<int:id_vehiculo>/estado", methods=["POST"])

@@ -359,6 +359,26 @@ def dashboard_estado():
     )
 
 
+def _viajes_programados():
+    """Viajes en estado 'programado' (ruta asignada por el admin, todavía sin
+    iniciar por el conductor), con conductor y vehículo precargados.
+
+    Se usa tanto en vehiculos_lista como en conductores_lista para el
+    indicador "Reservado": mientras un Viaje sigue 'programado', el
+    conductor y el vehículo que le asignó el admin ya están comprometidos
+    con esa ruta, aunque Vehiculo.estado siga en 'disponible' -su CHECK
+    constraint no tiene un valor 'reservado' y no se modifica aquí- y la
+    cuenta del conductor no tenga ninguna marca propia. Por eso se deriva en
+    Python cruzando contra Viaje en vez de agregar una columna nueva, igual
+    que ya hace mecanico.vehiculos_lista con la alerta mecánica pendiente.
+    """
+    return (
+        Viaje.query.filter_by(estado="programado")
+        .options(joinedload(Viaje.conductor), joinedload(Viaje.vehiculo))
+        .all()
+    )
+
+
 _ETIQUETA_GRUPO_CONDUCTOR = {
     0: "Licencia vigente",
     1: "Licencia próxima a vencer",
@@ -444,6 +464,13 @@ def conductores_lista():
         for conductor in conductores
     }
 
+    # Ruta programada pendiente por conductor (ver _viajes_programados): un
+    # conductor por ruta programada alcanza para el indicador visual, no
+    # hace falta guardar todas si por alguna razón tuviera más de una.
+    reserva_por_conductor = {}
+    for viaje in _viajes_programados():
+        reserva_por_conductor.setdefault(viaje.id_conductor, viaje)
+
     return render_template(
         "admin/conductores/lista.html",
         conductores=conductores,
@@ -451,6 +478,7 @@ def conductores_lista():
         buscar=buscar,
         estado_cuenta=estado_cuenta,
         grupo_conductor=grupo_conductor,
+        reserva_por_conductor=reserva_por_conductor,
     )
 
 
@@ -896,18 +924,43 @@ def _clave_orden_vehiculo(vehiculo):
 @admin.route("/vehiculos")
 @admin_required
 def vehiculos_lista():
-    """Lista los vehículos con su estado actual (RF-2.3), con 4 tarjetas de
+    """Lista los vehículos con su estado actual (RF-2.3), con 5 tarjetas de
     resumen y un buscador simple por placa (?buscar=).
 
     Igual que en conductores_lista, los conteos se calculan sobre TODOS los
     vehículos, no sobre el resultado ya filtrado por ?buscar=. El orden por
-    default agrupa por estado operativo (ver _clave_orden_vehiculo).
+    default agrupa por estado operativo (ver _clave_orden_vehiculo) -un
+    vehículo reservado sigue con estado='disponible' en la BD (ver
+    _viajes_programados), así que se queda en el mismo grupo "Disponibles";
+    no se creó un grupo aparte porque el badge en la fila ya lo distingue.
+
+    Decisión sobre las tarjetas: un vehículo reservado NO cuenta como
+    "Disponible" (ya está comprometido con una ruta), así que se resta de
+    ese conteo; en vez de perder ese número se agrega una tarjeta
+    "Reservados" nueva, para no esconder cuántos vehículos están en esa
+    situación.
     """
     todos = Vehiculo.query.order_by(Vehiculo.placas).all()
 
+    # Vehículos con una ruta programada pendiente de iniciar (ver
+    # _viajes_programados): aunque su columna `estado` siga en 'disponible',
+    # ya están comprometidos y el admin no debería volver a asignarlos.
+    reserva_por_vehiculo = {}
+    for viaje in _viajes_programados():
+        reserva_por_vehiculo.setdefault(viaje.id_vehiculo, viaje)
+
     conteos = {
         "total": len(todos),
-        "disponibles": sum(1 for v in todos if v.estado == "disponible"),
+        "disponibles": sum(
+            1
+            for v in todos
+            if v.estado == "disponible" and v.id_vehiculo not in reserva_por_vehiculo
+        ),
+        "reservados": sum(
+            1
+            for v in todos
+            if v.estado == "disponible" and v.id_vehiculo in reserva_por_vehiculo
+        ),
         "en_ruta": sum(1 for v in todos if v.estado == "en_ruta"),
         "en_taller": sum(1 for v in todos if v.estado == "en_taller"),
     }
@@ -932,6 +985,7 @@ def vehiculos_lista():
         conteos=conteos,
         buscar=buscar,
         grupo_vehiculo=grupo_vehiculo,
+        reserva_por_vehiculo=reserva_por_vehiculo,
     )
 
 

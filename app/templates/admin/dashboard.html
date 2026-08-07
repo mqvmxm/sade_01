@@ -133,6 +133,11 @@
                             <span class="badge-status danger">Pánico</span>
                         {% elif alerta.tipo == 'asistencia_mecanica' %}
                             <span class="badge-status warning">Problema mecánico</span>
+                            {% if alerta.vista %}
+                                <span class="text-help">👁 Vista</span>
+                            {% else %}
+                                <span class="text-help">Sin ver</span>
+                            {% endif %}
                         {% else %}
                             <span class="badge-status danger">Licencia vencida</span>
                         {% endif %}

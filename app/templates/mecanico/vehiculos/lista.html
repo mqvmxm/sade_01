@@ -50,7 +50,13 @@
                 <td>{{ vehiculo.marca }} {{ vehiculo.modelo }}</td>
                 <td>
                     {% if vehiculo.estado == 'disponible' %}
-                        <span class="badge-status success">Disponible</span>
+                        {% set viaje_programado = reserva_por_vehiculo.get(vehiculo.id_vehiculo) %}
+                        {% if viaje_programado %}
+                            <span class="badge-status warning">Reservado</span>
+                            <p class="text-help mb-0 mt-1">Para {{ viaje_programado.conductor.nombre }}</p>
+                        {% else %}
+                            <span class="badge-status success">Disponible</span>
+                        {% endif %}
                     {% elif vehiculo.estado == 'en_taller' %}
                         <span class="badge-status warning">En taller</span>
                     {% elif vehiculo.estado == 'en_ruta' %}
@@ -59,7 +65,25 @@
                     {% if alerta_mecanica %}
                         <div class="mt-1">
                             <span class="badge-status warning">Falla reportada</span>
+                            {% if alerta_mecanica.vista %}
+                                <span class="badge-status neutral">Vista · esperando reporte</span>
+                            {% else %}
+                                <form
+                                    method="POST"
+                                    action="{{ url_for('mecanico.alertas_marcar_vista', id_alerta=alerta_mecanica.id_alerta) }}"
+                                    class="d-inline ms-1"
+                                >
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                        Marcar como vista
+                                    </button>
+                                </form>
+                            {% endif %}
                             <p class="aviso-falla-mecanica">{{ alerta_mecanica.mensaje }}</p>
+                            <p class="text-help mb-0">
+                                {{ alerta_mecanica.generada_en.strftime('%d/%m/%Y %H:%M') }} ·
+                                {{ antiguedad_por_alerta.get(alerta_mecanica.id_alerta) }}
+                            </p>
                         </div>
                     {% endif %}
                 </td>

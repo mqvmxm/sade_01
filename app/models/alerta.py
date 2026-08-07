@@ -29,6 +29,11 @@ class Alerta(db.Model):
     atendida = db.Column(db.Boolean, nullable=False, default=False)
     generada_en = db.Column(db.DateTime, nullable=False, default=datetime.now)
     atendida_en = db.Column(db.DateTime, nullable=True)
+    # Estado intermedio, solo relevante para tipo='asistencia_mecanica': el
+    # mecánico ya vio el aviso pero todavía no completa el reporte de avería
+    # que la marca 'atendida' (ver mecanico.py, alertas_marcar_vista).
+    vista = db.Column(db.Boolean, nullable=False, default=False)
+    vista_en = db.Column(db.DateTime, nullable=True)
 
     viaje = db.relationship("Viaje", backref=db.backref("alertas", lazy=True))
     conductor = db.relationship("Conductor", backref=db.backref("alertas", lazy=True))
