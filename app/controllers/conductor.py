@@ -131,6 +131,21 @@ def viajes_iniciar(id_viaje):
         flash("Esa ruta ya no está pendiente de iniciar.", "error")
         return redirect(url_for("conductor.dashboard"))
 
+    # No se permite bajo ninguna circunstancia iniciar una ruta cuya ETA ya
+    # pasó (ni minutos ni días atrás): nacería "rota" y el motor de retraso
+    # (scheduler.revisar_viajes_activos) la marcaría atrasada en su primer
+    # ciclo sin que hubiera pasado ni un minuto real de manejo. La única
+    # salida para una ruta en este estado es que el admin la cancele y
+    # reprograme (ver admin.viajes_cancelar_programada).
+    if viaje.eta <= datetime.now():
+        flash(
+            "Esta ruta ya no se puede iniciar porque su hora estimada de llegada "
+            "ya pasó. Contacta a tu administrador para que la cancele y te asigne "
+            "una nueva.",
+            "error",
+        )
+        return redirect(url_for("conductor.dashboard"))
+
     if not perfil.licencia_vigente():
         flash("No puedes iniciar un viaje: tu licencia está vencida.", "error")
         return redirect(url_for("conductor.dashboard"))
@@ -167,16 +182,13 @@ def viajes_iniciar(id_viaje):
     )
     db.session.add(bitacora)
 
-    # RF-3 (resolución automática): si esta ruta ya tenía una alerta de
-    # 'ETA vencida sin iniciar' (ver scheduler.revisar_rutas_no_iniciadas),
-    # el inicio tardío la resuelve sola — no hay pantalla de "atender"
-    # dedicada para este tipo.
-    alerta_ruta_no_iniciada = Alerta.query.filter_by(
-        id_viaje=viaje.id_viaje, tipo="ruta_no_iniciada", atendida=False
-    ).first()
-    if alerta_ruta_no_iniciada is not None:
-        alerta_ruta_no_iniciada.atendida = True
-        alerta_ruta_no_iniciada.atendida_en = datetime.now()
+    # NOTA: ya no existe aquí una resolución automática de la alerta
+    # 'ruta_no_iniciada' al iniciar tarde. Ese camino quedó inalcanzable
+    # desde que se agregó el rechazo de ETA vencida más arriba: esa alerta
+    # solo se crea (scheduler.revisar_rutas_no_iniciadas) cuando la ETA ya
+    # pasó, y ese mismo caso ahora nunca llega hasta aquí. La única vía de
+    # resolución de esa alerta es la cancelación (ver
+    # admin.viajes_cancelar_programada).
 
     # RF-3.6 (regla de integridad): la BD protege con un índice único
     # parcial (idx_viaje_activo_unico) contra dos viajes 'activo' para el

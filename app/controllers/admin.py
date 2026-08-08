@@ -1770,16 +1770,18 @@ def _cierre_para_panico(alerta, reportes_por_viaje, forzado_por_viaje, manual_po
 
 
 def _cierre_para_ruta_no_iniciada(alerta, cancelada_por_viaje):
-    """Cierre de una Alerta tipo='ruta_no_iniciada': se resuelve sola por una
-    de dos vías, sin pantalla de "atender" dedicada (ver
-    conductor.viajes_iniciar y admin.viajes_cancelar_programada):
+    """Cierre de una Alerta tipo='ruta_no_iniciada', sin pantalla de
+    "atender" dedicada (ver admin.viajes_cancelar_programada):
 
     - El admin canceló la ruta -> 'Manual (admin)'. Se revisa primero: ese
       viaje queda en estado 'cerrado_admin' pero se excluye del bucket de
       viajes_cerrados más abajo, precisamente para que esta sea la ÚNICA
       fila de Historial para ese evento, no una duplicada y mal etiquetada.
-    - El conductor inició la ruta tarde -> 'Conductor' (conductor.viajes_
-      iniciar ya marcó alerta.atendida=True al arrancar).
+    - 'Conductor' -> alerta.atendida en True sin cancelación del admin. Ya
+      no puede volver a ocurrir (conductor.viajes_iniciar ahora rechaza de
+      forma permanente iniciar una ruta con ETA vencida, así que el inicio
+      tardío dejó de resolver esta alerta); se conserva la rama solo para
+      no romper el Historial de alertas creadas antes de ese cambio.
     - Si no ha pasado ninguna de las dos todavía -> 'Pendiente'.
     """
     if alerta.id_viaje in cancelada_por_viaje:

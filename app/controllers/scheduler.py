@@ -86,8 +86,12 @@ def revisar_rutas_no_iniciadas():
     queda en 'programado'; ver admin.viajes_programadas para el indicador
     visual inmediato en la tabla). No duplica alertas: si el viaje ya tiene
     una Alerta tipo='ruta_no_iniciada', se ignora en las siguientes corridas.
-    Se resuelve sola: ver conductor.viajes_iniciar (inicio tardío) y
-    admin.viajes_cancelar_programada (cancelación).
+
+    Una vez creada, la ÚNICA vía de resolución es que el admin cancele la
+    ruta (admin.viajes_cancelar_programada): conductor.viajes_iniciar
+    rechaza de forma permanente iniciar cualquier ruta cuya ETA ya pasó, así
+    que el inicio tardío ya no es (ni puede volver a ser) un camino de
+    resolución.
     """
     try:
         ahora = datetime.now()

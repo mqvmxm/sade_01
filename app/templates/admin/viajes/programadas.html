@@ -34,6 +34,9 @@
                     {{ viaje.eta.strftime('%d/%m/%Y %H:%M') }}
                     {% if viaje.eta < ahora %}
                         <span class="badge-status danger">ETA vencida, sin iniciar</span>
+                        <p class="text-help mb-0 mt-1">
+                            Ya no se puede iniciar. Cancélala para reprogramarla.
+                        </p>
                     {% endif %}
                 </td>
                 <td class="text-end">
