@@ -1,0 +1,18 @@
+{% extends '_layout_sidebar.html' %}
+
+{% block active_page %}{% endblock %}
+
+{% block sidebar_subtitle %}Panel de Mecánico{% endblock %}
+
+{% block sidebar_nav %}
+    <a
+        class="admin-nav-link {{ 'active' if self.active_page() == 'vehiculos' }}"
+        href="{{ url_for('mecanico.vehiculos_lista') }}"
+    >
+        Vehículos
+    </a>
+{% endblock %}
+
+{% block sidebar_content %}
+    {% block mecanico_content %}{% endblock %}
+{% endblock %}

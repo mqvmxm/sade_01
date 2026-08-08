@@ -11,6 +11,7 @@ from sqlalchemy.orm import joinedload
 from app import db
 from app.models.alerta import Alerta
 from app.models.bitacora import Bitacora
+from app.controllers.perfil import procesar_perfil
 from app.models.reporte_averia import ReporteAveria
 from app.models.vehiculo import Vehiculo
 from app.models.viaje import Viaje
@@ -74,6 +75,16 @@ def _alerta_mecanica_pendiente(id_viaje):
     return Alerta.query.filter_by(
         id_viaje=id_viaje, tipo="asistencia_mecanica", atendida=False
     ).first()
+
+
+@mecanico.route("/perfil", methods=["GET", "POST"])
+@mecanico_required
+def perfil():
+    """Pantalla "Mi perfil" del mecánico con sesión iniciada: edición de
+    correo/teléfono y cambio de contraseña propia (RF-1). La lógica es
+    compartida con admin.perfil (ver app/controllers/perfil.py).
+    """
+    return procesar_perfil("mecanico/perfil.html")
 
 
 @mecanico.route("/dashboard")

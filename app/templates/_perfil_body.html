@@ -1,0 +1,105 @@
+<p class="page-title mb-4">Mi perfil</p>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card p-4 mb-4">
+            <p class="section-subtitle mb-3">Datos de la cuenta</p>
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="formulario" value="datos">
+
+                <div class="mb-3">
+                    <label class="form-label">Nombre</label>
+                    <input type="text" class="form-control" value="{{ usuario.nombre }}" disabled>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Nombre de usuario</label>
+                    <input type="text" class="form-control" value="{{ usuario.nombre_usuario }}" disabled>
+                </div>
+                <div class="mb-3">
+                    <label for="email" class="form-label">Correo electrónico</label>
+                    <input
+                        type="email"
+                        class="form-control"
+                        id="email"
+                        name="email"
+                        value="{{ usuario.email or '' }}"
+                    >
+                </div>
+                <div class="mb-3">
+                    <label for="telefono" class="form-label">Teléfono</label>
+                    <input
+                        type="tel"
+                        class="form-control"
+                        id="telefono"
+                        name="telefono"
+                        value="{{ usuario.telefono or '' }}"
+                    >
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Rol</label>
+                    <input
+                        type="text"
+                        class="form-control"
+                        value="{{ 'Administrador' if usuario.es_admin() else 'Mecánico' if usuario.es_mecanico() else 'Conductor' }}"
+                        disabled
+                    >
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">Fecha de registro</label>
+                    <input
+                        type="text"
+                        class="form-control"
+                        value="{{ usuario.fecha_registro.strftime('%d/%m/%Y %H:%M') }}"
+                        disabled
+                    >
+                </div>
+
+                <button type="submit" class="btn btn-primary">Guardar cambios</button>
+            </form>
+        </div>
+
+        <div class="card p-4">
+            <p class="section-subtitle mb-3">Cambiar contraseña</p>
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="formulario" value="contrasena">
+
+                <div class="mb-3">
+                    <label for="contrasena_actual" class="form-label">Contraseña actual</label>
+                    <input
+                        type="password"
+                        class="form-control"
+                        id="contrasena_actual"
+                        name="contrasena_actual"
+                        required
+                    >
+                </div>
+                <div class="mb-3">
+                    <label for="nueva_contrasena" class="form-label">Nueva contraseña</label>
+                    <input
+                        type="password"
+                        class="form-control"
+                        id="nueva_contrasena"
+                        name="nueva_contrasena"
+                        required
+                        minlength="8"
+                    >
+                </div>
+                <div class="mb-4">
+                    <label for="confirmar_contrasena" class="form-label">Confirmar nueva contraseña</label>
+                    <input
+                        type="password"
+                        class="form-control"
+                        id="confirmar_contrasena"
+                        name="confirmar_contrasena"
+                        required
+                        minlength="8"
+                    >
+                </div>
+
+                <button type="submit" class="btn btn-primary">Cambiar contraseña</button>
+            </form>
+        </div>
+    </div>
+</div>

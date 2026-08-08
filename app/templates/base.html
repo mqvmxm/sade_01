@@ -211,7 +211,7 @@
             flex: 0 0 220px;
             background-color: var(--color-panel-dark);
             color: #fff;
-            padding: 1.5rem 1rem;
+            padding: 0;
             position: sticky;
             top: 0;
             align-self: flex-start;
@@ -221,37 +221,33 @@
             flex-direction: column;
         }
 
-        .admin-sidebar-brand {
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            margin-bottom: 2rem;
-            padding: 0 0.5rem;
+        /* Franja superior del sidebar: un tono mas oscuro que el resto
+           (--color-panel-dark), tal como el Figma. Sin logo/icono: solo el
+           nombre del sistema y el subtitulo del panel actual. */
+        .admin-sidebar-header {
+            background-color: #141a1f;
+            padding: 1.25rem 1.25rem 1.1rem;
+            margin-bottom: 1.5rem;
         }
 
-        .admin-sidebar-logo {
-            width: 34px;
-            height: 34px;
-            border-radius: 8px;
-            background-color: var(--color-brand);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .admin-sidebar-title {
             font-weight: 700;
-            font-size: 13px;
-            flex-shrink: 0;
-        }
-
-        .admin-sidebar-brand span {
-            font-weight: 700;
-            font-size: 15px;
+            font-size: 17px;
             color: #fff;
+            margin: 0;
+        }
+
+        .admin-sidebar-subtitle {
+            font-size: 9.5px;
+            color: #9ea3ab;
+            margin: 0.2rem 0 0;
         }
 
         .admin-sidebar-nav {
             display: flex;
             flex-direction: column;
             gap: 0.25rem;
+            padding: 0 1rem;
         }
 
         .admin-nav-link {
@@ -277,16 +273,60 @@
             font-weight: 600;
         }
 
-        /* Enlace de cerrar sesion */
+        /* Pie del sidebar: bloque de perfil (enlace a "Mi perfil") y, agrupado
+           en el mismo contenedor debajo, el enlace de cerrar sesion. */
         .admin-sidebar-footer {
             margin-top: auto;
-            padding-top: 1rem;
+            padding: 1rem;
             border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .admin-sidebar-profile {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.3rem;
+            border-radius: 8px;
+            text-decoration: none;
+        }
+
+        .admin-sidebar-profile:hover {
+            background-color: rgba(255, 255, 255, 0.06);
+        }
+
+        .admin-sidebar-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: var(--color-brand);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+
+        .admin-sidebar-name {
+            display: block;
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #fff;
+            line-height: 1.3;
+        }
+
+        .admin-sidebar-role {
+            display: block;
+            font-size: 10px;
+            color: #9ea3ab;
+            line-height: 1.3;
         }
 
         .admin-sidebar-logout {
             display: block;
-            padding: 0.5rem 0.75rem;
+            margin-top: 0.4rem;
+            padding: 0.3rem;
             font-size: 11px;
             font-weight: 500;
             color: #767C88;

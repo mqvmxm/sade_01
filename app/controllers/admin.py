@@ -26,6 +26,7 @@ from app.models.reporte_averia import ReporteAveria
 from app.models.usuario import Usuario
 from app.models.vehiculo import Vehiculo
 from app.models.viaje import Viaje
+from app.controllers.perfil import procesar_perfil
 from app.services.correo import enviar_correo
 from app.utils import validar_datos_viaje
 
@@ -333,6 +334,16 @@ def _texto_desglose_emergencia(conteos):
         f"{mecanica} mecánica{'s' if mecanica != 1 else ''} · "
         f"{conteos['emergencia_seguridad']} de seguridad"
     )
+
+
+@admin.route("/perfil", methods=["GET", "POST"])
+@admin_required
+def perfil():
+    """Pantalla "Mi perfil" del administrador con sesión iniciada: edición de
+    correo/teléfono y cambio de contraseña propia (RF-1). La lógica es
+    compartida con mecanico.perfil (ver app/controllers/perfil.py).
+    """
+    return procesar_perfil("admin/perfil.html")
 
 
 @admin.route("/dashboard")

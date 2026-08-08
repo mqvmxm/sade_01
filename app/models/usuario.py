@@ -29,6 +29,7 @@ class Usuario(db.Model, UserMixin):
     # unicidad por ahora: el esquema ya está en uso y varias cuentas viejas
     # no tendrán correo capturado todavía.
     email = db.Column(db.String(255), nullable=True)
+    telefono = db.Column(db.String(20), nullable=True)
     rol = db.Column(db.String(20), nullable=False)
     activo = db.Column(db.Boolean, nullable=False, default=True)
     id_conductor = db.Column(

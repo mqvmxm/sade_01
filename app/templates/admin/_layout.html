@@ -1,87 +1,72 @@
-{% extends 'base.html' %}
+{% extends '_layout_sidebar.html' %}
 
 {% block active_page %}{% endblock %}
 
-{% block body %}
-<div class="admin-shell">
-    <aside class="admin-sidebar">
-        <div class="admin-sidebar-brand">
-            <div class="admin-sidebar-logo">SD</div>
-            <span>S.A.D.E.</span>
-        </div>
-        <nav class="admin-sidebar-nav">
-            <a
-                class="admin-nav-link {{ 'active' if self.active_page() == 'inicio' }}"
-                href="{{ url_for('admin.dashboard') }}"
-            >
-                Inicio
-            </a>
-            <a
-                class="admin-nav-link {{ 'active' if self.active_page() == 'conductores' }}"
-                href="{{ url_for('admin.conductores_lista') }}"
-            >
-                Conductores
-            </a>
-            <a
-                class="admin-nav-link {{ 'active' if self.active_page() == 'vehiculos' }}"
-                href="{{ url_for('admin.vehiculos_lista') }}"
-            >
-                Vehículos
-            </a>
-            <a
-                class="admin-nav-link {{ 'active' if self.active_page() == 'mecanicos' }}"
-                href="{{ url_for('admin.mecanicos_lista') }}"
-            >
-                Mecánicos
-            </a>
-            <a
-                class="admin-nav-link {{ 'active' if self.active_page() == 'viajes' }}"
-                href="{{ url_for('admin.viajes_lista') }}"
-            >
-                Viajes activos
-            </a>
-            <a
-                class="admin-nav-link {{ 'active' if self.active_page() == 'viajes_programadas' }}"
-                href="{{ url_for('admin.viajes_programadas') }}"
-            >
-                Rutas programadas
-            </a>
-            <a
-                class="admin-nav-link {{ 'active' if self.active_page() == 'alertas' }}"
-                href="{{ url_for('admin.alertas_lista') }}"
-            >
-                Alertas
-            </a>
-            <a
-                class="admin-nav-link {{ 'active' if self.active_page() == 'reportes_averia' }}"
-                href="{{ url_for('admin.reportes_averia_lista') }}"
-            >
-                Reportes de avería
-            </a>
-            <a
-                class="admin-nav-link {{ 'active' if self.active_page() == 'historial' }}"
-                href="{{ url_for('admin.historial') }}"
-            >
-                Historial
-            </a>
-            <a
-                class="admin-nav-link {{ 'active' if self.active_page() == 'bitacora' }}"
-                href="{{ url_for('admin.bitacora_lista') }}"
-            >
-                Bitácora
-            </a>
-        </nav>
+{% block sidebar_subtitle %}Panel Administrativo{% endblock %}
 
-        <div class="admin-sidebar-footer">
-            <a class="admin-sidebar-logout" href="{{ url_for('auth.logout') }}">
-                Cerrar sesión →
-            </a>
-        </div>
-    </aside>
+{% block sidebar_nav %}
+    <a
+        class="admin-nav-link {{ 'active' if self.active_page() == 'inicio' }}"
+        href="{{ url_for('admin.dashboard') }}"
+    >
+        Inicio
+    </a>
+    <a
+        class="admin-nav-link {{ 'active' if self.active_page() == 'conductores' }}"
+        href="{{ url_for('admin.conductores_lista') }}"
+    >
+        Conductores
+    </a>
+    <a
+        class="admin-nav-link {{ 'active' if self.active_page() == 'vehiculos' }}"
+        href="{{ url_for('admin.vehiculos_lista') }}"
+    >
+        Vehículos
+    </a>
+    <a
+        class="admin-nav-link {{ 'active' if self.active_page() == 'mecanicos' }}"
+        href="{{ url_for('admin.mecanicos_lista') }}"
+    >
+        Mecánicos
+    </a>
+    <a
+        class="admin-nav-link {{ 'active' if self.active_page() == 'viajes' }}"
+        href="{{ url_for('admin.viajes_lista') }}"
+    >
+        Viajes activos
+    </a>
+    <a
+        class="admin-nav-link {{ 'active' if self.active_page() == 'viajes_programadas' }}"
+        href="{{ url_for('admin.viajes_programadas') }}"
+    >
+        Rutas programadas
+    </a>
+    <a
+        class="admin-nav-link {{ 'active' if self.active_page() == 'alertas' }}"
+        href="{{ url_for('admin.alertas_lista') }}"
+    >
+        Alertas
+    </a>
+    <a
+        class="admin-nav-link {{ 'active' if self.active_page() == 'reportes_averia' }}"
+        href="{{ url_for('admin.reportes_averia_lista') }}"
+    >
+        Reportes de avería
+    </a>
+    <a
+        class="admin-nav-link {{ 'active' if self.active_page() == 'historial' }}"
+        href="{{ url_for('admin.historial') }}"
+    >
+        Historial
+    </a>
+    <a
+        class="admin-nav-link {{ 'active' if self.active_page() == 'bitacora' }}"
+        href="{{ url_for('admin.bitacora_lista') }}"
+    >
+        Bitácora
+    </a>
+{% endblock %}
 
-    <main class="admin-main">
-        {{ self.flashes() }}
-        {% block admin_content %}{% endblock %}
-    </main>
-</div>
+{% block sidebar_content %}
+    {% block admin_content %}{% endblock %}
 {% endblock %}

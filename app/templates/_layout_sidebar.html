@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<div class="admin-shell">
+    <aside class="admin-sidebar">
+        <div class="admin-sidebar-header">
+            <p class="admin-sidebar-title">S.A.D.E.</p>
+            <p class="admin-sidebar-subtitle">{% block sidebar_subtitle %}{% endblock %}</p>
+        </div>
+
+        <nav class="admin-sidebar-nav">
+            {% block sidebar_nav %}{% endblock %}
+        </nav>
+
+        <div class="admin-sidebar-footer">
+            {% set partes = current_user.nombre.split() %}
+            {% set iniciales = ((partes[0][0] if partes|length > 0 else '') ~ (partes[1][0] if partes|length > 1 else '')) | upper %}
+            {% set endpoint_perfil = 'admin.perfil' if current_user.es_admin() else 'mecanico.perfil' %}
+            <a class="admin-sidebar-profile" href="{{ url_for(endpoint_perfil) }}">
+                <span class="admin-sidebar-avatar">{{ iniciales }}</span>
+                <span>
+                    <span class="admin-sidebar-name">{{ current_user.nombre }}</span>
+                    <span class="admin-sidebar-role">
+                        {%- if current_user.es_admin() -%}
+                            Administrador
+                        {%- elif current_user.es_mecanico() -%}
+                            Mecánico
+                        {%- else -%}
+                            Conductor
+                        {%- endif -%}
+                    </span>
+                </span>
+            </a>
+            <a class="admin-sidebar-logout" href="{{ url_for('auth.logout') }}">Cerrar sesión →</a>
+        </div>
+    </aside>
+
+    <main class="admin-main">
+        {{ self.flashes() }}
+        {% block sidebar_content %}{% endblock %}
+    </main>
+</div>
+{% endblock %}
