@@ -177,6 +177,13 @@
     >
         Exportar CSV
     </a>
+
+    <a
+        href="{{ url_for('admin.historial', formato='xlsx', **filtros_actuales) }}"
+        class="btn btn-outline-secondary btn-sm btn-exportar"
+    >
+        Exportar Excel
+    </a>
 </form>
 
 {% if eventos %}

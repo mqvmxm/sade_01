@@ -10,6 +10,9 @@ from functools import wraps
 
 from flask import Blueprint, Response, abort, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from openpyxl import Workbook
+from openpyxl.styles import Border, Font, PatternFill, Side
+from openpyxl.utils import get_column_letter
 from sqlalchemy import case
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
@@ -1850,8 +1853,74 @@ def _exportar_historial_csv(eventos):
             ]
         )
 
-    respuesta = Response(buffer.getvalue(), mimetype="text/csv")
+    # utf-8-sig antepone el BOM que Excel necesita para reconocer la
+    # codificación automáticamente; sin él, Excel asume Latin-1 y los
+    # acentos/flechas del contenido se muestran corruptos.
+    respuesta = Response(buffer.getvalue().encode("utf-8-sig"), mimetype="text/csv")
     respuesta.headers["Content-Disposition"] = "attachment; filename=historial_sade.csv"
+    return respuesta
+
+
+COLUMNAS_HISTORIAL = ("Tipo de evento", "Conductor", "Ruta", "Fecha y hora", "Cierre")
+ANCHO_COLUMNA_MAX_XLSX = 50
+
+
+def _exportar_historial_xlsx(eventos):
+    """Genera el Excel de descarga con las mismas columnas visibles en la
+    tabla y en _exportar_historial_csv(), con formato: encabezado con fondo
+    corporativo, bordes en las celdas con datos y columnas congeladas."""
+    libro = Workbook()
+    hoja = libro.active
+    hoja.title = "Historial"
+
+    relleno_encabezado = PatternFill(start_color="17423F", end_color="17423F", fill_type="solid")
+    fuente_encabezado = Font(color="FFFFFF", bold=True)
+    borde_delgado = Border(
+        left=Side(style="thin"),
+        right=Side(style="thin"),
+        top=Side(style="thin"),
+        bottom=Side(style="thin"),
+    )
+
+    hoja.append(COLUMNAS_HISTORIAL)
+    for celda in hoja[1]:
+        celda.fill = relleno_encabezado
+        celda.font = fuente_encabezado
+
+    for evento in eventos:
+        hoja.append(
+            [
+                evento["tipo_etiqueta"],
+                evento["conductor"],
+                evento["ruta"],
+                evento["fecha"].strftime("%d/%m/%Y %H:%M") if evento["fecha"] else "",
+                evento["cierre"],
+            ]
+        )
+
+    for fila in hoja.iter_rows(min_row=1, max_row=hoja.max_row):
+        for celda in fila:
+            celda.border = borde_delgado
+
+    for indice, columna in enumerate(COLUMNAS_HISTORIAL, start=1):
+        letra = get_column_letter(indice)
+        ancho_contenido = max(
+            (len(str(celda.value)) for celda in hoja[letra] if celda.value is not None),
+            default=len(columna),
+        )
+        hoja.column_dimensions[letra].width = min(ancho_contenido + 2, ANCHO_COLUMNA_MAX_XLSX)
+
+    hoja.freeze_panes = "A2"
+
+    buffer = io.BytesIO()
+    libro.save(buffer)
+    buffer.seek(0)
+
+    respuesta = Response(
+        buffer.getvalue(),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    respuesta.headers["Content-Disposition"] = "attachment; filename=historial_sade.xlsx"
     return respuesta
 
 
@@ -1897,8 +1966,11 @@ def historial():
             flash("La fecha 'hasta' no es válida.", "error")
             hasta_texto = ""
 
-    if request.args.get("formato") == "csv":
+    formato = request.args.get("formato")
+    if formato == "csv":
         return _exportar_historial_csv(eventos)
+    if formato == "xlsx":
+        return _exportar_historial_xlsx(eventos)
 
     filtros_actuales = {
         clave: valor
