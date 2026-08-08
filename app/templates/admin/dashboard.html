@@ -146,6 +146,8 @@
                             {% endif %}
                         {% elif alerta.tipo == 'incidencia_trafico' %}
                             <span class="badge-status warning">Tráfico o retraso</span>
+                        {% elif alerta.tipo == 'ruta_no_iniciada' %}
+                            <span class="badge-status danger">Ruta no iniciada</span>
                         {% else %}
                             <span class="badge-status danger">Licencia vencida</span>
                         {% endif %}

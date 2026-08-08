@@ -74,6 +74,55 @@ def revisar_viajes_activos():
         _notificar_retraso(alerta, viaje)
 
 
+def revisar_rutas_no_iniciadas():
+    """Genera una Alerta informativa para cada Viaje 'programado' cuya ETA ya
+    pasó sin que el conductor la haya iniciado (antes esto quedaba invisible
+    para siempre).
+
+    A diferencia de revisar_viajes_activos() (retraso de una ruta YA en
+    curso), esta alerta es puramente informativa: el viaje ni siquiera
+    arrancó, no hay conductor en ruta al que avisar por WhatsApp/SMS, así
+    que NO llama a enviar_whatsapp/enviar_sms ni cambia viaje.estado (se
+    queda en 'programado'; ver admin.viajes_programadas para el indicador
+    visual inmediato en la tabla). No duplica alertas: si el viaje ya tiene
+    una Alerta tipo='ruta_no_iniciada', se ignora en las siguientes corridas.
+    Se resuelve sola: ver conductor.viajes_iniciar (inicio tardío) y
+    admin.viajes_cancelar_programada (cancelación).
+    """
+    try:
+        ahora = datetime.now()
+        rutas_programadas = Viaje.query.filter_by(estado="programado").all()
+
+        for viaje in rutas_programadas:
+            if ahora <= viaje.eta:
+                continue
+
+            ya_tiene_alerta = Alerta.query.filter_by(
+                id_viaje=viaje.id_viaje, tipo="ruta_no_iniciada"
+            ).first()
+            if ya_tiene_alerta is not None:
+                continue
+
+            alerta = Alerta(
+                id_viaje=viaje.id_viaje,
+                id_conductor=viaje.id_conductor,
+                tipo="ruta_no_iniciada",
+                prioridad=2,
+                mensaje=(
+                    f"{viaje.conductor.nombre} no inició la ruta "
+                    f"{viaje.origen} → {viaje.destino}, programada con ETA "
+                    f"{viaje.eta.strftime('%d/%m/%Y %H:%M')}."
+                ),
+                atendida=False,
+            )
+            db.session.add(alerta)
+
+        db.session.commit()
+    except Exception as error:
+        db.session.rollback()
+        print(f"[scheduler] Error al revisar rutas no iniciadas: {error}")
+
+
 def _notificar_retraso(alerta, viaje):
     """Envía WhatsApp y SMS al contacto de emergencia del conductor y al
     administrador (RF-3.5), y deja constancia en Bitácora.

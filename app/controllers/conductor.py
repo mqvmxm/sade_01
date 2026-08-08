@@ -167,6 +167,17 @@ def viajes_iniciar(id_viaje):
     )
     db.session.add(bitacora)
 
+    # RF-3 (resolución automática): si esta ruta ya tenía una alerta de
+    # 'ETA vencida sin iniciar' (ver scheduler.revisar_rutas_no_iniciadas),
+    # el inicio tardío la resuelve sola — no hay pantalla de "atender"
+    # dedicada para este tipo.
+    alerta_ruta_no_iniciada = Alerta.query.filter_by(
+        id_viaje=viaje.id_viaje, tipo="ruta_no_iniciada", atendida=False
+    ).first()
+    if alerta_ruta_no_iniciada is not None:
+        alerta_ruta_no_iniciada.atendida = True
+        alerta_ruta_no_iniciada.atendida_en = datetime.now()
+
     # RF-3.6 (regla de integridad): la BD protege con un índice único
     # parcial (idx_viaje_activo_unico) contra dos viajes 'activo' para el
     # mismo vehículo; última defensa ante una condición de carrera entre la

@@ -30,7 +30,12 @@
                 <td>{{ viaje.conductor.nombre }}</td>
                 <td>{{ viaje.vehiculo.placas }}</td>
                 <td>{{ viaje.origen }} → {{ viaje.destino }}</td>
-                <td>{{ viaje.eta.strftime('%d/%m/%Y %H:%M') }}</td>
+                <td>
+                    {{ viaje.eta.strftime('%d/%m/%Y %H:%M') }}
+                    {% if viaje.eta < ahora %}
+                        <span class="badge-status danger">ETA vencida, sin iniciar</span>
+                    {% endif %}
+                </td>
                 <td class="text-end">
                     <form
                         method="POST"

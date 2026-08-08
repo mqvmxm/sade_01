@@ -93,7 +93,11 @@ def _registrar_manejadores_errores(app):
 
 
 def _iniciar_scheduler(app):
-    """Agenda revisar_viajes_activos() cada 60s (RF-3.4).
+    """Agenda revisar_viajes_activos() y revisar_rutas_no_iniciadas() cada
+    60s (RF-3.4), en el mismo job: ambas son barridos periódicos del mismo
+    tipo de dato (Viaje) y no hay razón para desacoplar su cadencia. Cada
+    una tiene su propio try/except interno, así que un fallo de una no
+    tumba a la otra.
 
     En modo debug, el reloader de Flask relanza el proceso completo en un
     subproceso hijo; sin este chequeo, create_app() correría dos veces y
@@ -108,11 +112,12 @@ def _iniciar_scheduler(app):
     if scheduler.running:
         return
 
-    from app.controllers.scheduler import revisar_viajes_activos
+    from app.controllers.scheduler import revisar_rutas_no_iniciadas, revisar_viajes_activos
 
     def _revisar_viajes_activos_job():
         with app.app_context():
             revisar_viajes_activos()
+            revisar_rutas_no_iniciadas()
 
     scheduler.add_job(
         _revisar_viajes_activos_job,

@@ -53,6 +53,7 @@ TIPO_INFO_HISTORIAL = {
     "licencia_vencida": ("Licencia vencida", "danger", "admin.alertas_lista"),
     "asistencia_mecanica": ("Problema mecánico", "warning", "admin.alertas_lista"),
     "incidencia_trafico": ("Tráfico o retraso", "warning", "admin.alertas_lista"),
+    "ruta_no_iniciada": ("Ruta no iniciada", "danger", "admin.alertas_lista"),
     "averia": ("Avería en ruta", "warning", "admin.reportes_averia_lista"),
     "cerrado_forzado": ("Viaje cerrado (forzado)", "danger", "admin.viajes_lista"),
     "completado": ("Viaje completado", "success", "admin.viajes_lista"),
@@ -1505,14 +1506,16 @@ def viajes_programar():
 @admin_required
 def viajes_programadas():
     """Lista las rutas programadas por el admin que siguen pendientes de que
-    el conductor las inicie (RF-3)."""
+    el conductor las inicie (RF-3). Pasa 'ahora' para que el template pinte
+    el badge de ETA vencida sin depender de que el scheduler ya haya
+    corrido (ver scheduler.revisar_rutas_no_iniciadas)."""
     rutas = (
         Viaje.query.options(joinedload(Viaje.conductor), joinedload(Viaje.vehiculo))
         .filter_by(estado="programado")
         .order_by(Viaje.eta)
         .all()
     )
-    return render_template("admin/viajes/programadas.html", rutas=rutas)
+    return render_template("admin/viajes/programadas.html", rutas=rutas, ahora=datetime.now())
 
 
 @admin.route("/viajes/<int:id_viaje>/cancelar-programada", methods=["POST"])
@@ -1520,10 +1523,20 @@ def viajes_programadas():
 def viajes_cancelar_programada(id_viaje):
     """Cancela una ruta programada que el conductor todavía no inició.
 
-    Nada más depende todavía de un viaje que no ha iniciado (ni vehículo ni
-    conductor quedaron marcados de ninguna forma especial al programarlo),
-    así que se borra el registro directamente en vez de dejar un estado
-    'cancelado' que ninguna otra vista consultaría.
+    Si la ETA no había vencido (no existe Alerta 'ruta_no_iniciada' para
+    ella), nada más depende del viaje y se borra el registro directamente,
+    igual que antes.
+
+    Si SÍ existe esa alerta, el viaje ya no se puede borrar:
+    alertas.id_viaje -> viajes.id_viaje tiene FK con ON DELETE NO ACTION en
+    la BD real, así que db.session.delete(viaje) lanzaría IntegrityError. En
+    ese caso se conserva el Viaje (estado 'cerrado_admin', el mismo que usa
+    viajes_cerrar_forzado para "cerrado por el admin fuera del flujo
+    normal"; a diferencia de ese caso, aquí el vehículo nunca dejó de estar
+    'disponible' porque la ruta nunca arrancó, así que no se toca) y se
+    marca la alerta como atendida, para no perder en el Historial la
+    trazabilidad de que se resolvió por cancelación manual (ver
+    _cierre_para_ruta_no_iniciada).
     """
     viaje = Viaje.query.get_or_404(id_viaje)
 
@@ -1537,7 +1550,19 @@ def viajes_cancelar_programada(id_viaje):
         "antes de que el conductor la iniciara."
     )
 
-    db.session.delete(viaje)
+    alerta_ruta_no_iniciada = Alerta.query.filter_by(
+        id_viaje=viaje.id_viaje, tipo="ruta_no_iniciada"
+    ).first()
+
+    if alerta_ruta_no_iniciada is not None:
+        ahora = datetime.now()
+        alerta_ruta_no_iniciada.atendida = True
+        alerta_ruta_no_iniciada.atendida_en = ahora
+        viaje.estado = "cerrado_admin"
+        viaje.hora_llegada = ahora
+    else:
+        db.session.delete(viaje)
+
     db.session.commit()
 
     bitacora = Bitacora(
@@ -1733,6 +1758,26 @@ def _cierre_para_panico(alerta, reportes_por_viaje, forzado_por_viaje, manual_po
     return cierre
 
 
+def _cierre_para_ruta_no_iniciada(alerta, cancelada_por_viaje):
+    """Cierre de una Alerta tipo='ruta_no_iniciada': se resuelve sola por una
+    de dos vías, sin pantalla de "atender" dedicada (ver
+    conductor.viajes_iniciar y admin.viajes_cancelar_programada):
+
+    - El admin canceló la ruta -> 'Manual (admin)'. Se revisa primero: ese
+      viaje queda en estado 'cerrado_admin' pero se excluye del bucket de
+      viajes_cerrados más abajo, precisamente para que esta sea la ÚNICA
+      fila de Historial para ese evento, no una duplicada y mal etiquetada.
+    - El conductor inició la ruta tarde -> 'Conductor' (conductor.viajes_
+      iniciar ya marcó alerta.atendida=True al arrancar).
+    - Si no ha pasado ninguna de las dos todavía -> 'Pendiente'.
+    """
+    if alerta.id_viaje in cancelada_por_viaje:
+        return "Manual (admin)"
+    if alerta.atendida:
+        return "Conductor"
+    return "Pendiente"
+
+
 def _construir_eventos_historial():
     """Arma la lista normalizada del Historial (RF de auditoría): une
     Alertas (retraso/pánico/licencia_vencida) y Viajes cerrados
@@ -1751,6 +1796,10 @@ def _construir_eventos_historial():
         b.registro_id: b
         for b in Bitacora.query.filter_by(accion="confirmar_llegada_manual_admin", tabla_afectada="viajes").all()
     }
+    cancelada_por_viaje = {
+        b.registro_id: b
+        for b in Bitacora.query.filter_by(accion="ruta_programada_cancelada", tabla_afectada="viajes").all()
+    }
 
     eventos = []
 
@@ -1764,6 +1813,7 @@ def _construir_eventos_historial():
                     "licencia_vencida",
                     "asistencia_mecanica",
                     "incidencia_trafico",
+                    "ruta_no_iniciada",
                 ]
             )
         )
@@ -1787,6 +1837,11 @@ def _construir_eventos_historial():
             slug, cierre = alerta.tipo, "Conductor"
             ruta = f"{alerta.viaje.origen} → {alerta.viaje.destino}" if alerta.viaje else "—"
             id_vehiculo = alerta.viaje.id_vehiculo if alerta.viaje else None
+        elif alerta.tipo == "ruta_no_iniciada":
+            slug = "ruta_no_iniciada"
+            cierre = _cierre_para_ruta_no_iniciada(alerta, cancelada_por_viaje)
+            ruta = f"{alerta.viaje.origen} → {alerta.viaje.destino}" if alerta.viaje else "—"
+            id_vehiculo = alerta.viaje.id_vehiculo if alerta.viaje else None
         else:  # licencia_vencida (contemplado por esquema; hoy nunca se genera)
             slug, cierre = "licencia_vencida", "Sistema"
             ruta = "—"
@@ -1807,6 +1862,7 @@ def _construir_eventos_historial():
     viajes_cerrados = (
         Viaje.query.options(joinedload(Viaje.conductor), joinedload(Viaje.vehiculo))
         .filter(Viaje.estado.in_(["completado", "cerrado_admin"]))
+        .filter(Viaje.id_viaje.notin_(cancelada_por_viaje.keys()))
         .all()
     )
     for viaje in viajes_cerrados:
