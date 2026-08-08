@@ -1396,9 +1396,9 @@ def _vehiculos_disponibles_para_programar():
 
 def _eta_min_programar():
     """Ayuda de UX para el atributo min del input datetime-local de ETA (ver
-    validar_datos_viaje, que es la validación real): mismo umbral de 10
-    minutos, calculado en el momento de renderizar la página."""
-    return (datetime.now() + timedelta(minutes=10)).strftime("%Y-%m-%dT%H:%M")
+    validar_datos_viaje, que es la validación real): mismo umbral de 1
+    minuto, calculado en el momento de renderizar la página."""
+    return (datetime.now() + timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M")
 
 
 @admin.route("/viajes/programar", methods=["GET", "POST"])

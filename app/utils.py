@@ -10,7 +10,7 @@ def validar_datos_viaje(origen, destino, eta_texto):
 
     Retorna (origen, destino, eta, error). Si error es None, origen/destino
     vienen ya recortados de espacios y eta es un datetime válido con al
-    menos 10 minutos de margen sobre la hora del servidor; si error no es
+    menos 1 minuto de margen sobre la hora del servidor; si error no es
     None, origen/destino/eta son None y error trae el mensaje a mostrar.
     """
     origen = (origen or "").strip()
@@ -34,12 +34,12 @@ def validar_datos_viaje(origen, destino, eta_texto):
     except ValueError:
         return None, None, None, "La hora estimada de llegada (ETA) no es válida."
 
-    if eta < datetime.now() + timedelta(minutes=10):
+    if eta < datetime.now() + timedelta(minutes=1):
         return (
             None,
             None,
             None,
-            "La hora estimada de llegada debe ser al menos 10 minutos después de ahora.",
+            "La hora estimada de llegada debe ser al menos 1 minuto después de ahora.",
         )
 
     return origen, destino, eta, None
