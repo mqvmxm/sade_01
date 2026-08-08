@@ -28,6 +28,12 @@ from app.utils import validar_datos_viaje
 
 VIAJE_ESTADOS_CERRABLES_POR_ADMIN = ("activo", "alerta", "emergencia")
 
+# Estados de viaje que cuentan como "sin cerrar" para efectos de no poder
+# asignarle a un conductor o vehículo una ruta nueva (ver
+# _conductores_disponibles_para_programar y el conflicto al guardar en
+# viajes_programar).
+VIAJE_ESTADOS_SIN_CERRAR = ("programado", "activo", "alerta", "emergencia")
+
 # Historial de eventos: cada tipo normalizado con su etiqueta, color de badge
 # (reutiliza el mismo sistema badge-status del resto del proyecto) y a qué
 # lista existente apunta su link "Ver detalle". El proyecto no tiene vistas
@@ -1348,13 +1354,22 @@ def viajes_cerrar_forzado(id_viaje):
 
 
 def _conductores_disponibles_para_programar():
-    """Conductores activos con licencia vigente, aptos para que el admin les
-    asigne una ruta nueva (RF-3). Un conductor con licencia vencida no debe
-    ni aparecer en el selector -RF-6.2 se refuerza aquí, además de al
-    iniciar el viaje (ver conductor.viajes_iniciar)."""
+    """Conductores activos con licencia vigente y sin una ruta sin cerrar,
+    aptos para que el admin les asigne una ruta nueva (RF-3). Un conductor
+    con licencia vencida no debe ni aparecer en el selector -RF-6.2 se
+    refuerza aquí, además de al iniciar el viaje (ver
+    conductor.viajes_iniciar). El filtro de "sin ruta sin cerrar" replica el
+    mismo criterio que el conflicto validado al guardar en viajes_programar,
+    para que el admin no se entere del choque hasta el POST."""
+    ids_con_viaje_sin_cerrar = db.session.query(Viaje.id_conductor).filter(
+        Viaje.estado.in_(VIAJE_ESTADOS_SIN_CERRAR)
+    )
     return [
         c
-        for c in Conductor.query.filter_by(activo=True).order_by(Conductor.nombre).all()
+        for c in Conductor.query.filter_by(activo=True)
+        .filter(~Conductor.id_conductor.in_(ids_con_viaje_sin_cerrar))
+        .order_by(Conductor.nombre)
+        .all()
         if c.licencia_vigente()
     ]
 
@@ -1411,7 +1426,7 @@ def viajes_programar():
                 Viaje.id_conductor == conductor.id_conductor,
                 Viaje.id_vehiculo == vehiculo.id_vehiculo,
             ),
-            Viaje.estado.in_(["programado", "activo", "alerta", "emergencia"]),
+            Viaje.estado.in_(VIAJE_ESTADOS_SIN_CERRAR),
         ).first()
         if conflicto is not None:
             flash("El conductor o el vehículo seleccionados ya tienen un viaje sin cerrar.", "error")
