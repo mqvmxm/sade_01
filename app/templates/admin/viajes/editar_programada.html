@@ -29,10 +29,14 @@
                     </option>
                     {% endfor %}
                 </select>
-                {% if not conductores %}
-                <p class="text-help mt-1">
-                    No hay conductores activos con licencia vigente disponibles para asignar.
-                </p>
+                {% if sin_conductores %}
+                <div class="mt-2">
+                    <span class="badge-status warning">Sin conductores disponibles</span>
+                    <p class="text-help mb-0 mt-1">
+                        No hay conductores disponibles: todos están inactivos, con licencia
+                        vencida, o ya tienen una ruta sin cerrar.
+                    </p>
+                </div>
                 {% endif %}
             </div>
 
@@ -51,8 +55,14 @@
                     </option>
                     {% endfor %}
                 </select>
-                {% if not vehiculos %}
-                <p class="text-help mt-1">No hay vehículos disponibles en este momento.</p>
+                {% if sin_vehiculos %}
+                <div class="mt-2">
+                    <span class="badge-status warning">Sin vehículos disponibles</span>
+                    <p class="text-help mb-0 mt-1">
+                        No hay vehículos disponibles: todos están en ruta, en taller, o ya
+                        reservados para otra ruta.
+                    </p>
+                </div>
                 {% endif %}
             </div>
 
@@ -94,7 +104,13 @@
             </div>
 
             <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                <button
+                    type="submit"
+                    class="btn btn-primary"
+                    {{ 'disabled' if sin_conductores or sin_vehiculos }}
+                >
+                    Guardar cambios
+                </button>
                 <a href="{{ url_for('admin.viajes_programadas') }}" class="btn btn-outline-secondary">
                     Cancelar
                 </a>

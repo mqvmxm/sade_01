@@ -1430,6 +1430,23 @@ def _vehiculos_disponibles_para_programar(excluir_viaje_id=None):
     return Vehiculo.query.filter(filtro).order_by(Vehiculo.placas).all()
 
 
+def _contexto_selectores_ruta(excluir_viaje_id=None):
+    """Conductores y vehículos disponibles para los selectores de
+    viajes_programar/viajes_editar_programada, junto con si cada lista
+    salió vacía. Calculado aquí (no en la plantilla) para que tanto el
+    mensaje explicativo de selector vacío como el atributo `disabled` del
+    botón de guardar lean el mismo par de banderas, en vez de repetir
+    `not conductores`/`not vehiculos` en varios lugares del template."""
+    conductores = _conductores_disponibles_para_programar(excluir_viaje_id=excluir_viaje_id)
+    vehiculos = _vehiculos_disponibles_para_programar(excluir_viaje_id=excluir_viaje_id)
+    return {
+        "conductores": conductores,
+        "vehiculos": vehiculos,
+        "sin_conductores": not conductores,
+        "sin_vehiculos": not vehiculos,
+    }
+
+
 def _eta_min_programar():
     """Ayuda de UX para el atributo min del input datetime-local de ETA (ver
     validar_datos_viaje, que es la validación real): mismo umbral de 1
@@ -1446,8 +1463,7 @@ def viajes_programar():
     """
     if request.method == "POST":
         contexto_formulario = {
-            "conductores": _conductores_disponibles_para_programar(),
-            "vehiculos": _vehiculos_disponibles_para_programar(),
+            **_contexto_selectores_ruta(),
             "formulario": request.form,
             "eta_min": _eta_min_programar(),
         }
@@ -1542,8 +1558,7 @@ def viajes_programar():
 
     return render_template(
         "admin/viajes/programar.html",
-        conductores=_conductores_disponibles_para_programar(),
-        vehiculos=_vehiculos_disponibles_para_programar(),
+        **_contexto_selectores_ruta(),
         formulario=None,
         eta_min=_eta_min_programar(),
     )
@@ -1655,8 +1670,7 @@ def viajes_editar_programada(id_viaje):
 
     if request.method == "POST":
         contexto_formulario = {
-            "conductores": _conductores_disponibles_para_programar(excluir_viaje_id=id_viaje),
-            "vehiculos": _vehiculos_disponibles_para_programar(excluir_viaje_id=id_viaje),
+            **_contexto_selectores_ruta(excluir_viaje_id=id_viaje),
             "formulario": request.form,
             "eta_min": _eta_min_programar(),
             "viaje": viaje,
@@ -1744,8 +1758,7 @@ def viajes_editar_programada(id_viaje):
 
     return render_template(
         "admin/viajes/editar_programada.html",
-        conductores=_conductores_disponibles_para_programar(excluir_viaje_id=id_viaje),
-        vehiculos=_vehiculos_disponibles_para_programar(excluir_viaje_id=id_viaje),
+        **_contexto_selectores_ruta(excluir_viaje_id=id_viaje),
         formulario={
             "id_conductor": viaje.id_conductor,
             "id_vehiculo": viaje.id_vehiculo,
