@@ -304,20 +304,29 @@ def _conteos_dashboard():
     dashboard() y dashboard_estado() para que ambos siempre reporten
     exactamente lo mismo.
 
-    La tarjeta "Emergencia activa" se compone de dos conteos separados en
-    vez de uno solo: 'emergencia_seguridad' (viajes en estado 'emergencia',
-    el pánico/RF-4 de siempre) y 'emergencia_mecanica' (alertas
-    'asistencia_mecanica' sin atender). El proyecto distingue explícitamente
-    falla mecánica de incidente de seguridad, así que el semáforo no debe
-    fundir ambos en un número sin desglose (ver dashboard(), que arma el
-    texto de desglose a partir de estos dos valores).
+    La tarjeta "Emergencias" se compone de dos conteos separados en vez de
+    uno solo: 'emergencia_mecanica' (alertas 'asistencia_mecanica' sin
+    atender) y 'emergencia_trafico' (alertas 'incidencia_trafico' sin
+    atender), con el mismo patrón para ambas. Antes incluía también
+    'emergencia_seguridad' (viajes en estado 'emergencia'), pero ese conteo
+    se quitó: el disparo manual del aviso silencioso (blueprint
+    'emergencia', /emergencia/activar) ya no está registrado en
+    app/__init__.py, así que ningún camino de código actual deja un Viaje en
+    estado 'emergencia' -ese conteo siempre daría 0 y el desglose mentiría
+    sobre por qué la tarjeta está en rojo. El estado 'emergencia' en sí
+    sigue siendo válido en el modelo (CheckConstraint de Viaje) y se sigue
+    consultando en otras vistas (viajes lista, cierre de viajes por admin,
+    dashboard del conductor) por si queda algún viaje viejo en ese estado,
+    pero ya no alimenta esta tarjeta.
     """
     return {
         "activo": Viaje.query.filter_by(estado="activo").count(),
         "alerta": Viaje.query.filter_by(estado="alerta").count(),
-        "emergencia_seguridad": Viaje.query.filter_by(estado="emergencia").count(),
         "emergencia_mecanica": Alerta.query.filter_by(
             tipo="asistencia_mecanica", atendida=False
+        ).count(),
+        "emergencia_trafico": Alerta.query.filter_by(
+            tipo="incidencia_trafico", atendida=False
         ).count(),
         "licencia_vencida": Conductor.query.filter(
             Conductor.fecha_vencimiento_lic < date.today()
@@ -326,13 +335,14 @@ def _conteos_dashboard():
 
 
 def _texto_desglose_emergencia(conteos):
-    """Texto tipo '1 mecánica · 2 de seguridad' para la tarjeta "Emergencia
-    activa" del dashboard (ver _conteos_dashboard).
+    """Texto tipo '1 mecánica · 2 de tráfico' para la tarjeta "Emergencias"
+    del dashboard (ver _conteos_dashboard).
     """
     mecanica = conteos["emergencia_mecanica"]
+    trafico = conteos["emergencia_trafico"]
     return (
         f"{mecanica} mecánica{'s' if mecanica != 1 else ''} · "
-        f"{conteos['emergencia_seguridad']} de seguridad"
+        f"{trafico} de tráfico"
     )
 
 

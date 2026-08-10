@@ -74,9 +74,9 @@
     </div>
     <div class="col-md-3">
         {{ stat_card(
-            'Emergencia activa',
-            conteos.emergencia_mecanica + conteos.emergencia_seguridad,
-            'Fallas mecánicas y avisos de seguridad sin atender',
+            'Emergencias',
+            conteos.emergencia_mecanica + conteos.emergencia_trafico,
+            'Fallas mecánicas y reportes de tráfico sin atender',
             'danger',
             desglose=desglose_emergencia
         ) }}
