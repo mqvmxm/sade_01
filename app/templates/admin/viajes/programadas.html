@@ -40,14 +40,22 @@
                     {% endif %}
                 </td>
                 <td class="text-end">
-                    <form
-                        method="POST"
-                        action="{{ url_for('admin.viajes_cancelar_programada', id_viaje=viaje.id_viaje) }}"
-                        onsubmit="return confirm('¿Cancelar esta ruta programada? Esta acción no se puede deshacer.');"
-                    >
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn btn-sm btn-outline-secondary">Cancelar</button>
-                    </form>
+                    <div class="d-flex justify-content-end gap-2">
+                        <a
+                            href="{{ url_for('admin.viajes_editar_programada', id_viaje=viaje.id_viaje) }}"
+                            class="btn btn-sm btn-outline-secondary"
+                        >
+                            Editar
+                        </a>
+                        <form
+                            method="POST"
+                            action="{{ url_for('admin.viajes_cancelar_programada', id_viaje=viaje.id_viaje) }}"
+                            onsubmit="return confirm('¿Cancelar esta ruta programada? Esta acción no se puede deshacer.');"
+                        >
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Cancelar</button>
+                        </form>
+                    </div>
                 </td>
             </tr>
             {% endfor %}

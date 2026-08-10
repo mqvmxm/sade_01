@@ -1,0 +1,120 @@
+{% extends 'admin/_layout.html' %}
+
+{% set f = formulario or {} %}
+
+{% block title %}Editar ruta programada — S.A.D.E.{% endblock %}
+
+{% block active_page %}viajes_programadas{% endblock %}
+
+{% block admin_content %}
+<p class="page-title mb-4">Editar ruta programada #{{ viaje.id_viaje }}</p>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <form method="POST" action="{{ url_for('admin.viajes_editar_programada', id_viaje=viaje.id_viaje) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="mb-3">
+                <label for="id_conductor" class="form-label">Conductor</label>
+                <select class="form-select" id="id_conductor" name="id_conductor" required>
+                    <option value="" disabled {{ 'selected' if not f.get('id_conductor') }}>
+                        Selecciona un conductor
+                    </option>
+                    {% for c in conductores %}
+                    <option
+                        value="{{ c.id_conductor }}"
+                        {{ 'selected' if f.get('id_conductor')|string == c.id_conductor|string }}
+                    >
+                        {{ c.nombre }} — licencia {{ c.num_licencia }}
+                    </option>
+                    {% endfor %}
+                </select>
+                {% if not conductores %}
+                <p class="text-help mt-1">
+                    No hay conductores activos con licencia vigente disponibles para asignar.
+                </p>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label for="id_vehiculo" class="form-label">Vehículo</label>
+                <select class="form-select" id="id_vehiculo" name="id_vehiculo" required>
+                    <option value="" disabled {{ 'selected' if not f.get('id_vehiculo') }}>
+                        Selecciona un vehículo
+                    </option>
+                    {% for v in vehiculos %}
+                    <option
+                        value="{{ v.id_vehiculo }}"
+                        {{ 'selected' if f.get('id_vehiculo')|string == v.id_vehiculo|string }}
+                    >
+                        {{ v.placas }} — {{ v.marca }} {{ v.modelo }}
+                    </option>
+                    {% endfor %}
+                </select>
+                {% if not vehiculos %}
+                <p class="text-help mt-1">No hay vehículos disponibles en este momento.</p>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label for="origen" class="form-label">Origen</label>
+                <input
+                    type="text"
+                    class="form-control"
+                    id="origen"
+                    name="origen"
+                    value="{{ f.get('origen', '') }}"
+                    minlength="3"
+                    required
+                >
+            </div>
+            <div class="mb-3">
+                <label for="destino" class="form-label">Destino</label>
+                <input
+                    type="text"
+                    class="form-control"
+                    id="destino"
+                    name="destino"
+                    value="{{ f.get('destino', '') }}"
+                    minlength="3"
+                    required
+                >
+            </div>
+            <div class="mb-3">
+                <label for="eta" class="form-label">Hora estimada de llegada</label>
+                <input
+                    type="datetime-local"
+                    class="form-control"
+                    id="eta"
+                    name="eta"
+                    value="{{ f.get('eta', '') }}"
+                    min="{{ eta_min }}"
+                    required
+                >
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                <a href="{{ url_for('admin.viajes_programadas') }}" class="btn btn-outline-secondary">
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="help-panel">
+            <p class="help-panel-title mb-0">Sobre editar una ruta programada</p>
+            <p>
+                Solo se puede editar mientras la ruta siga en estado "programado" -si el conductor
+                ya la inició, ya no aparece aquí para editar.
+            </p>
+            <p>
+                El conductor y el vehículo ya asignados a esta ruta siguen apareciendo en los
+                selectores aunque estén "ocupados": lo están con esta misma ruta, no es un
+                conflicto real.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1378,17 +1378,27 @@ def viajes_cerrar_forzado(id_viaje):
     return redirect(url_for("admin.viajes_lista"))
 
 
-def _conductores_disponibles_para_programar():
+def _conductores_disponibles_para_programar(excluir_viaje_id=None):
     """Conductores activos con licencia vigente y sin una ruta sin cerrar,
     aptos para que el admin les asigne una ruta nueva (RF-3). Un conductor
     con licencia vencida no debe ni aparecer en el selector -RF-6.2 se
     refuerza aquí, además de al iniciar el viaje (ver
     conductor.viajes_iniciar). El filtro de "sin ruta sin cerrar" replica el
     mismo criterio que el conflicto validado al guardar en viajes_programar,
-    para que el admin no se entere del choque hasta el POST."""
-    ids_con_viaje_sin_cerrar = db.session.query(Viaje.id_conductor).filter(
-        Viaje.estado.in_(VIAJE_ESTADOS_SIN_CERRAR)
-    )
+    para que el admin no se entere del choque hasta el POST.
+
+    excluir_viaje_id (opcional): ignora esa ruta puntual al revisar viajes
+    sin cerrar. Usado por viajes_editar_programada (auto-exclusión, RF-3):
+    el conductor ya asignado a la ruta que se está editando no es un
+    conflicto consigo mismo, así que debe seguir apareciendo como
+    seleccionable. viajes_programar (alta) sigue llamando esta función sin
+    el parámetro, así que su comportamiento no cambia.
+    """
+    query_sin_cerrar = Viaje.query.filter(Viaje.estado.in_(VIAJE_ESTADOS_SIN_CERRAR))
+    if excluir_viaje_id is not None:
+        query_sin_cerrar = query_sin_cerrar.filter(Viaje.id_viaje != excluir_viaje_id)
+    ids_con_viaje_sin_cerrar = query_sin_cerrar.with_entities(Viaje.id_conductor)
+
     return [
         c
         for c in Conductor.query.filter_by(activo=True)
@@ -1399,9 +1409,25 @@ def _conductores_disponibles_para_programar():
     ]
 
 
-def _vehiculos_disponibles_para_programar():
-    """Vehículos aptos para asignar a una ruta nueva: solo 'disponible'."""
-    return Vehiculo.query.filter_by(estado="disponible").order_by(Vehiculo.placas).all()
+def _vehiculos_disponibles_para_programar(excluir_viaje_id=None):
+    """Vehículos aptos para asignar a una ruta: solo 'disponible'.
+
+    excluir_viaje_id (opcional): además del criterio anterior, incluye el
+    vehículo ya asignado a esa ruta puntual aunque su columna `estado` ya
+    no sea 'disponible' (ej. el mecánico lo mandó a 'en_taller' mientras
+    estaba reservado). Mismo espíritu de auto-exclusión que
+    _conductores_disponibles_para_programar, usado por
+    viajes_editar_programada; viajes_programar (alta) sigue llamando esta
+    función sin el parámetro, así que su comportamiento no cambia.
+    """
+    filtro = Vehiculo.estado == "disponible"
+    if excluir_viaje_id is not None:
+        id_vehiculo_actual = db.session.query(Viaje.id_vehiculo).filter_by(
+            id_viaje=excluir_viaje_id
+        ).scalar()
+        if id_vehiculo_actual is not None:
+            filtro = db.or_(filtro, Vehiculo.id_vehiculo == id_vehiculo_actual)
+    return Vehiculo.query.filter(filtro).order_by(Vehiculo.placas).all()
 
 
 def _eta_min_programar():
@@ -1598,6 +1624,138 @@ def viajes_cancelar_programada(id_viaje):
 
     flash("Ruta programada cancelada.", "success")
     return redirect(url_for("admin.viajes_programadas"))
+
+
+@admin.route("/viajes/<int:id_viaje>/editar-programada", methods=["GET", "POST"])
+@admin_required
+def viajes_editar_programada(id_viaje):
+    """Edita conductor, vehículo, origen/destino/ETA de una ruta programada
+    que el conductor todavía no inició (RF-3): antes la única forma de
+    corregir un dato mal capturado era cancelar y reprogramar desde cero,
+    riesgoso dado el margen mínimo de solo 1 minuto que ya tiene la ETA (ver
+    validar_datos_viaje).
+
+    Solo aplica con estado 'programado' -en GET y en POST, por si el
+    conductor la inicia entre ambas peticiones-, igual que
+    viajes_cancelar_programada.
+
+    AUTO-EXCLUSIÓN (mismo espíritu que el aviso de placa duplicada al
+    editar el vehículo que ya tiene esa misma placa): el conductor y el
+    vehículo YA asignados a esta ruta no son un conflicto consigo mismos,
+    así que _conductores_disponibles_para_programar /
+    _vehiculos_disponibles_para_programar reciben excluir_viaje_id=id_viaje
+    para seguir mostrándolos como seleccionables, y el chequeo de conflicto
+    de más abajo excluye este mismo viaje al buscar otro viaje sin cerrar.
+    """
+    viaje = Viaje.query.get_or_404(id_viaje)
+
+    if viaje.estado != "programado":
+        flash("Esa ruta ya no está pendiente de iniciar; no se puede editar.", "error")
+        return redirect(url_for("admin.viajes_programadas"))
+
+    if request.method == "POST":
+        contexto_formulario = {
+            "conductores": _conductores_disponibles_para_programar(excluir_viaje_id=id_viaje),
+            "vehiculos": _vehiculos_disponibles_para_programar(excluir_viaje_id=id_viaje),
+            "formulario": request.form,
+            "eta_min": _eta_min_programar(),
+            "viaje": viaje,
+        }
+
+        conductor = Conductor.query.get(request.form.get("id_conductor", type=int))
+        if conductor is None or not conductor.activo or not conductor.licencia_vigente():
+            flash("Selecciona un conductor activo con licencia vigente.", "error")
+            return render_template("admin/viajes/editar_programada.html", **contexto_formulario)
+
+        vehiculo = Vehiculo.query.get(request.form.get("id_vehiculo", type=int))
+        # Auto-exclusión: el vehículo ya asignado a esta ruta es válido
+        # aunque su columna `estado` ya no sea 'disponible' (ver
+        # _vehiculos_disponibles_para_programar).
+        if vehiculo is None or (
+            vehiculo.estado != "disponible" and vehiculo.id_vehiculo != viaje.id_vehiculo
+        ):
+            flash("Selecciona un vehículo disponible.", "error")
+            return render_template("admin/viajes/editar_programada.html", **contexto_formulario)
+
+        origen, destino, eta, error = validar_datos_viaje(
+            request.form.get("origen"), request.form.get("destino"), request.form.get("eta")
+        )
+        if error:
+            flash(error, "error")
+            return render_template("admin/viajes/editar_programada.html", **contexto_formulario)
+
+        # Mismo criterio que viajes_programar, excluyendo esta misma ruta:
+        # ni el conductor ni el vehículo nuevos pueden estar ya
+        # comprometidos con OTRA ruta sin cerrar (programada, activa, en
+        # alerta o en emergencia).
+        conflicto = Viaje.query.filter(
+            Viaje.id_viaje != viaje.id_viaje,
+            db.or_(
+                Viaje.id_conductor == conductor.id_conductor,
+                Viaje.id_vehiculo == vehiculo.id_vehiculo,
+            ),
+            Viaje.estado.in_(VIAJE_ESTADOS_SIN_CERRAR),
+        ).first()
+        if conflicto is not None:
+            flash("El conductor o el vehículo seleccionados ya tienen un viaje sin cerrar.", "error")
+            return render_template("admin/viajes/editar_programada.html", **contexto_formulario)
+
+        cambios = []
+        if conductor.id_conductor != viaje.id_conductor:
+            cambios.append(f"conductor de '{viaje.conductor.nombre}' a '{conductor.nombre}'")
+        if vehiculo.id_vehiculo != viaje.id_vehiculo:
+            cambios.append(f"vehículo de '{viaje.vehiculo.placas}' a '{vehiculo.placas}'")
+        if origen != viaje.origen or destino != viaje.destino:
+            cambios.append(f"ruta de '{viaje.origen} → {viaje.destino}' a '{origen} → {destino}'")
+        if eta != viaje.eta:
+            cambios.append(
+                f"ETA de '{viaje.eta.strftime('%d/%m/%Y %H:%M')}' a '{eta.strftime('%d/%m/%Y %H:%M')}'"
+            )
+
+        viaje.id_conductor = conductor.id_conductor
+        viaje.id_vehiculo = vehiculo.id_vehiculo
+        viaje.origen = origen
+        viaje.destino = destino
+        viaje.eta = eta
+
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            flash("El conductor o el vehículo seleccionados ya tienen un viaje sin cerrar.", "error")
+            return render_template("admin/viajes/editar_programada.html", **contexto_formulario)
+
+        if cambios:
+            bitacora = Bitacora(
+                id_usuario=current_user.id_usuario,
+                accion="ruta_programada_editada",
+                descripcion=(
+                    f"Ruta programada #{viaje.id_viaje} editada por {current_user.nombre}: "
+                    + "; ".join(cambios) + "."
+                ),
+                tabla_afectada="viajes",
+                registro_id=viaje.id_viaje,
+            )
+            db.session.add(bitacora)
+            db.session.commit()
+
+        flash("Ruta programada actualizada correctamente.", "success")
+        return redirect(url_for("admin.viajes_programadas"))
+
+    return render_template(
+        "admin/viajes/editar_programada.html",
+        conductores=_conductores_disponibles_para_programar(excluir_viaje_id=id_viaje),
+        vehiculos=_vehiculos_disponibles_para_programar(excluir_viaje_id=id_viaje),
+        formulario={
+            "id_conductor": viaje.id_conductor,
+            "id_vehiculo": viaje.id_vehiculo,
+            "origen": viaje.origen,
+            "destino": viaje.destino,
+            "eta": viaje.eta.strftime("%Y-%m-%dT%H:%M"),
+        },
+        eta_min=_eta_min_programar(),
+        viaje=viaje,
+    )
 
 
 def _detalle_alerta(alerta):
