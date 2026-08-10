@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}Mi perfil — S.A.D.E.{% endblock %}
+
+{% block theme_init %}
+<script>
+    (function () {
+        var tema = localStorage.getItem('sade_tema_conductor') || 'claro';
+        if (tema === 'oscuro') {
+            document.documentElement.setAttribute('data-tema', 'oscuro');
+        }
+    })();
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <p class="text-help mb-0">
+                <a href="{{ url_for('conductor.dashboard') }}">← Volver al panel</a>
+            </p>
+            <div class="d-flex align-items-center gap-2">
+                <button
+                    type="button"
+                    id="boton-tema"
+                    class="theme-toggle"
+                    title="Cambiar tema claro/oscuro"
+                    aria-label="Cambiar tema claro/oscuro"
+                >
+                    <span id="icono-tema">🌙</span>
+                </button>
+                <a href="{{ url_for('auth.logout') }}" class="logout-link">Cerrar sesión →</a>
+            </div>
+        </div>
+
+        {% include '_perfil_body.html' %}
+    </div>
+</div>
+
+<script>
+    (function () {
+        var CLAVE_TEMA = 'sade_tema_conductor';
+        var boton = document.getElementById('boton-tema');
+        var icono = document.getElementById('icono-tema');
+
+        function actualizarIcono() {
+            var oscuro = document.documentElement.getAttribute('data-tema') === 'oscuro';
+            icono.textContent = oscuro ? '☀️' : '🌙';
+        }
+
+        actualizarIcono();
+
+        boton.addEventListener('click', function () {
+            var oscuroActivo = document.documentElement.getAttribute('data-tema') === 'oscuro';
+            if (oscuroActivo) {
+                document.documentElement.removeAttribute('data-tema');
+                localStorage.setItem(CLAVE_TEMA, 'claro');
+            } else {
+                document.documentElement.setAttribute('data-tema', 'oscuro');
+                localStorage.setItem(CLAVE_TEMA, 'oscuro');
+            }
+            actualizarIcono();
+        });
+    })();
+</script>
+{% endblock %}

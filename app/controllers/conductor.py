@@ -15,6 +15,7 @@ from app import db
 from app.models.alerta import Alerta
 from app.models.bitacora import Bitacora
 from app.models.viaje import Viaje
+from app.controllers.perfil import procesar_perfil
 
 conductor = Blueprint("conductor", __name__)
 
@@ -31,6 +32,16 @@ def conductor_required(view_func):
         return view_func(*args, **kwargs)
 
     return wrapper
+
+
+@conductor.route("/perfil", methods=["GET", "POST"])
+@conductor_required
+def perfil():
+    """Pantalla "Mi perfil" del conductor con sesión iniciada: edición de
+    correo/teléfono y cambio de contraseña propia (RF-1). La lógica es
+    compartida con admin.perfil y mecanico.perfil (ver app/controllers/perfil.py).
+    """
+    return procesar_perfil("conductor/perfil.html")
 
 
 @conductor.route("/dashboard")

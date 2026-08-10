@@ -178,6 +178,18 @@
             color: var(--color-text);
         }
 
+        /* Bootstrap fija su propio fondo gris claro para :disabled (via
+           --bs-secondary-bg), que no sigue nuestras variables de tema: en
+           modo oscuro (data-tema="oscuro", usado solo por las vistas del
+           conductor) eso deja el fondo claro fijo mientras el texto sí
+           hereda var(--color-text) ya aclarado, resultando en texto casi
+           ilegible sobre un fondo casi del mismo tono. */
+        .form-control:disabled, .form-select:disabled, .form-control[readonly] {
+            background-color: var(--color-input-bg);
+            color: var(--color-text-secondary);
+            opacity: 1;
+        }
+
         /* Switch sol/luna de tema, usado en las vistas del conductor */
         .theme-toggle {
             display: inline-flex;
