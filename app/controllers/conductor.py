@@ -16,6 +16,7 @@ from app.models.alerta import Alerta
 from app.models.bitacora import Bitacora
 from app.models.viaje import Viaje
 from app.controllers.perfil import procesar_perfil
+from app.services.geocodificacion import obtener_direccion
 
 conductor = Blueprint("conductor", __name__)
 
@@ -246,6 +247,20 @@ def reportar_incidencia():
     incluye 'emergencia' entre los estados válidos, esa alerta nunca podría
     crearse aunque el formulario llegara a enviarse por algún medio
     distinto del botón del dashboard.
+
+    Captura de ubicación (opcional): si el formulario trae latitud/longitud
+    -el frontend las manda solo si el navegador logró obtenerlas, ver el
+    script de conductor/dashboard.html-, se geocodifican a una dirección
+    legible (ver app/services/geocodificacion.py) y se guardan junto con
+    las coordenadas en la Alerta. Como esta vista solo crea alertas
+    'asistencia_mecanica' e 'incidencia_trafico' (ver
+    TIPOS_INCIDENCIA_CONDUCTOR), la captura de ubicación queda
+    automáticamente limitada a esos dos tipos -el retraso automático del
+    motor asíncrono (scheduler.revisar_viajes_activos) no pasa por aquí y
+    no captura ubicación. Sin coordenadas, los tres campos quedan en None.
+    Si hay coordenadas pero falla la geocodificación, latitud/longitud se
+    guardan igual -son un dato real del navegador- y solo direccion queda
+    en None; en ningún caso se rompe el resto del flujo.
     """
     perfil = current_user.conductor
     if perfil is None:
@@ -269,6 +284,10 @@ def reportar_incidencia():
         return redirect(url_for("conductor.dashboard"))
 
     descripcion = request.form.get("descripcion", "").strip()
+
+    latitud = request.form.get("latitud", type=float)
+    longitud = request.form.get("longitud", type=float)
+    direccion = obtener_direccion(latitud, longitud)
 
     if tipo == "asistencia_mecanica":
         if descripcion:
@@ -300,6 +319,9 @@ def reportar_incidencia():
         prioridad=2,
         mensaje=mensaje,
         atendida=False,
+        latitud=latitud,
+        longitud=longitud,
+        direccion=direccion,
     )
     db.session.add(alerta)
     db.session.flush()  # asigna alerta.id_alerta antes de la Bitácora

@@ -185,6 +185,42 @@
                                 form.classList.remove('d-none');
                             });
                         }
+
+                        // Ubicación opcional (mismo criterio que el viejo aviso
+                        // silencioso): si el navegador no tiene soporte, el
+                        // conductor niega el permiso, o hay timeout, el
+                        // formulario se envía igual sin latitud/longitud -nunca
+                        // bloquea el envío ni muestra un error. form.submit()
+                        // no vuelve a disparar 'submit', así que no hay riesgo
+                        // de bucle.
+                        if (form) {
+                            form.addEventListener('submit', function (evento) {
+                                if (!navigator.geolocation) {
+                                    return;
+                                }
+                                evento.preventDefault();
+
+                                var agregarCampoOculto = function (nombre, valor) {
+                                    var input = document.createElement('input');
+                                    input.type = 'hidden';
+                                    input.name = nombre;
+                                    input.value = valor;
+                                    form.appendChild(input);
+                                };
+
+                                navigator.geolocation.getCurrentPosition(
+                                    function (posicion) {
+                                        agregarCampoOculto('latitud', posicion.coords.latitude);
+                                        agregarCampoOculto('longitud', posicion.coords.longitude);
+                                        form.submit();
+                                    },
+                                    function () {
+                                        form.submit();
+                                    },
+                                    { timeout: 4000, maximumAge: 60000 }
+                                );
+                            });
+                        }
                     })();
                 </script>
             {% endif %}

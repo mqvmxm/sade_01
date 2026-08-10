@@ -80,6 +80,9 @@
                                 {{ alerta_mecanica.generada_en.strftime('%d/%m/%Y %H:%M') }} ·
                                 {{ antiguedad_por_alerta.get(alerta_mecanica.id_alerta) }}
                             </p>
+                            {% if alerta_mecanica.direccion %}
+                                <p class="text-help mb-0">📍 {{ alerta_mecanica.direccion }}</p>
+                            {% endif %}
                         </div>
                     {% endif %}
                 </td>

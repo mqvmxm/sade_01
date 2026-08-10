@@ -77,6 +77,9 @@
                 </div>
                 <p class="mb-0 mt-2 section-subtitle">{{ alerta.conductor.nombre }}</p>
                 <p class="text-help mb-0">{{ alerta.mensaje }}</p>
+                {% if alerta.direccion %}
+                    <p class="text-help mb-0">📍 {{ alerta.direccion }}</p>
+                {% endif %}
             </a>
             {% endfor %}
         </div>
@@ -139,6 +142,12 @@
                     <p class="text-help mb-0">Hora de la alerta</p>
                     <p class="mb-0">{{ alerta_seleccionada.generada_en.strftime('%d/%m/%Y %H:%M') }}</p>
                 </div>
+                {% if alerta_seleccionada.direccion %}
+                <div class="col-6">
+                    <p class="text-help mb-0">Ubicación</p>
+                    <p class="mb-0">📍 {{ alerta_seleccionada.direccion }}</p>
+                </div>
+                {% endif %}
             </div>
 
             {% if detalle.emergencia %}

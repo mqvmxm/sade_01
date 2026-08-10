@@ -178,6 +178,9 @@
                 </div>
                 <p class="mb-0 mt-2">{{ alerta.conductor.nombre }}</p>
                 <p class="text-help mb-0">{{ alerta.mensaje }}</p>
+                {% if alerta.direccion %}
+                    <p class="text-help mb-0">📍 {{ alerta.direccion }}</p>
+                {% endif %}
             </div>
             {% endfor %}
         </div>

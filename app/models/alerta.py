@@ -34,6 +34,21 @@ class Alerta(db.Model):
     # que la marca 'atendida' (ver mecanico.py, alertas_marcar_vista).
     vista = db.Column(db.Boolean, nullable=False, default=False)
     vista_en = db.Column(db.DateTime, nullable=True)
+    # Ubicación opcional capturada al reportar la incidencia (ver
+    # conductor.reportar_incidencia, solo para tipo='asistencia_mecanica' e
+    # 'incidencia_trafico' -no para 'retraso', que sigue siendo generado por
+    # el motor asíncrono sin captura de ubicación). latitud/longitud quedan
+    # en NULL únicamente cuando el conductor no compartió su ubicación
+    # (permiso denegado, sin soporte del navegador, timeout) -en ese caso no
+    # hay nada que geocodificar, así que direccion también queda en NULL.
+    # Si sí hubo coordenadas pero la geocodificación inversa falló (ver
+    # app/services/geocodificacion.py), latitud/longitud se conservan tal
+    # cual las mandó el navegador y solo direccion queda en NULL -perder un
+    # GPS válido porque Nominatim tuvo un problema sería peor que mostrar la
+    # alerta sin dirección legible.
+    latitud = db.Column(db.Float, nullable=True)
+    longitud = db.Column(db.Float, nullable=True)
+    direccion = db.Column(db.String(255), nullable=True)
 
     viaje = db.relationship("Viaje", backref=db.backref("alertas", lazy=True))
     conductor = db.relationship("Conductor", backref=db.backref("alertas", lazy=True))
