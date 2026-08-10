@@ -1,0 +1,49 @@
+{% extends 'mecanico/_layout.html' %}
+
+{% block title %}Mis reportes de avería — S.A.D.E.{% endblock %}
+
+{% block active_page %}reportes_averia{% endblock %}
+
+{% block mecanico_content %}
+<p class="page-title mb-4">Mis reportes de avería</p>
+
+{% if reportes %}
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Vehículo</th>
+                <th>Descripción</th>
+                <th>Estado antes del reporte</th>
+                <th>Fecha</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for reporte in reportes %}
+            <tr>
+                <td>
+                    {{ reporte.vehiculo.placas }}
+                    {% if reporte.archivado_en %}
+                        <span class="badge-status neutral">Archivado</span>
+                    {% endif %}
+                </td>
+                <td>{{ reporte.descripcion }}</td>
+                <td>
+                    {% if reporte.estado_vehiculo_prev == 'disponible' %}
+                        <span class="badge-status success">Disponible</span>
+                    {% elif reporte.estado_vehiculo_prev == 'en_taller' %}
+                        <span class="badge-status warning">En taller</span>
+                    {% elif reporte.estado_vehiculo_prev == 'en_ruta' %}
+                        <span class="badge-status neutral">En ruta</span>
+                    {% endif %}
+                </td>
+                <td>{{ reporte.registrado_en.strftime('%d/%m/%Y %H:%M') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">Todavía no has registrado ningún reporte de avería.</p>
+{% endif %}
+{% endblock %}

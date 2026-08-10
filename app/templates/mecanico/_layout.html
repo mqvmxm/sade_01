@@ -11,6 +11,12 @@
     >
         Vehículos
     </a>
+    <a
+        class="admin-nav-link {{ 'active' if self.active_page() == 'reportes_averia' }}"
+        href="{{ url_for('mecanico.reportes_averia_lista') }}"
+    >
+        Mis reportes de avería
+    </a>
 {% endblock %}
 
 {% block sidebar_content %}

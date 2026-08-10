@@ -329,3 +329,33 @@ def vehiculos_reportar_averia(id_vehiculo):
         viaje_activo=viaje_activo,
         alerta_mecanica=alerta_mecanica,
     )
+
+
+@mecanico.route("/reportes-averia")
+@mecanico_required
+def reportes_averia_lista():
+    """Historial de los reportes de avería creados por el mecánico en sesión
+    (RF-5.4 desde la perspectiva del mecánico, no existía hasta ahora: solo
+    admin.reportes_averia_lista mostraba todos los reportes del sistema).
+
+    SEGURIDAD: filtra SIEMPRE por current_user.id_usuario. No se acepta
+    ningún id de mecánico por query param ni ninguna otra vía -un mecánico
+    jamás debe poder ver los reportes de otro.
+
+    A diferencia de admin.reportes_averia_lista (que por default oculta los
+    reportes archivados: son una lista *operativa* para seguimiento
+    reciente, ver reportes_averia_archivar), esta vista SÍ incluye los
+    archivados: es explícitamente un historial personal, no una lista de
+    pendientes, así que archivar un reporte viejo desde el panel del admin
+    no debe hacerlo desaparecer del propio historial del mecánico que lo
+    registró.
+    """
+    reportes = (
+        ReporteAveria.query.options(
+            joinedload(ReporteAveria.vehiculo), joinedload(ReporteAveria.viaje)
+        )
+        .filter_by(id_usuario=current_user.id_usuario)
+        .order_by(ReporteAveria.registrado_en.desc())
+        .all()
+    )
+    return render_template("mecanico/reportes_averia.html", reportes=reportes)
