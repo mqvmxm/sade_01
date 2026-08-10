@@ -1,0 +1,72 @@
+{% extends 'mecanico/_layout.html' %}
+
+{% block title %}Detalle de falla — S.A.D.E.{% endblock %}
+
+{% block active_page %}vehiculos{% endblock %}
+
+{% block mecanico_content %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <p class="mb-2">
+            <a href="{{ url_for('mecanico.vehiculos_lista') }}">← Volver a Vehículos</a>
+        </p>
+        <p class="page-title mb-4">Falla reportada</p>
+
+        <div class="card p-4">
+            <p class="section-subtitle mb-3">
+                {{ vehiculo.placas }} — {{ vehiculo.marca }} {{ vehiculo.modelo }}
+            </p>
+
+            <div class="row g-3 mb-3">
+                <div class="col-sm-6">
+                    <p class="text-help mb-0">Conductor</p>
+                    <p class="mb-0">{{ alerta.conductor.nombre }}</p>
+                </div>
+                <div class="col-sm-6">
+                    <p class="text-help mb-0">Teléfono</p>
+                    <p class="mb-0">{{ alerta.conductor.telefono }}</p>
+                </div>
+                <div class="col-12">
+                    <p class="text-help mb-0">Descripción del reporte</p>
+                    <p class="mb-0">{{ alerta.mensaje }}</p>
+                </div>
+                <div class="col-sm-6">
+                    <p class="text-help mb-0">Fecha y hora</p>
+                    <p class="mb-0">
+                        {{ alerta.generada_en.strftime('%d/%m/%Y %H:%M') }} · {{ antiguedad }}
+                    </p>
+                </div>
+                {% if alerta.direccion %}
+                <div class="col-sm-6">
+                    <p class="text-help mb-0">Ubicación</p>
+                    <p class="mb-0">📍 {{ alerta.direccion }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="d-flex gap-2">
+                {% if not alerta.vista %}
+                <form
+                    method="POST"
+                    action="{{ url_for('mecanico.alertas_marcar_vista', id_alerta=alerta.id_alerta) }}"
+                >
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline-secondary">
+                        Marcar como vista
+                    </button>
+                </form>
+                {% else %}
+                <span class="badge-status neutral align-self-center">Vista · esperando reporte</span>
+                {% endif %}
+
+                <a
+                    href="{{ url_for('mecanico.vehiculos_reportar_averia', id_vehiculo=vehiculo.id_vehiculo) }}"
+                    class="btn btn-primary"
+                >
+                    Reportar avería
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

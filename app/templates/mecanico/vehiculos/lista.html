@@ -39,6 +39,11 @@
         </thead>
         <tbody>
             {% for vehiculo in vehiculos %}
+            {% if loop.first or grupo_vehiculo[vehiculo.id_vehiculo] != grupo_vehiculo[loop.previtem.id_vehiculo] %}
+            <tr class="table-group-row">
+                <td colspan="5" class="stat-card-label">{{ grupo_vehiculo[vehiculo.id_vehiculo] }}</td>
+            </tr>
+            {% endif %}
             {% set alerta_mecanica = alertas_mecanicas_por_vehiculo.get(vehiculo.id_vehiculo) %}
             <tr class="{{ 'fila-falla-reportada' if alerta_mecanica }}">
                 <td>{{ vehiculo.placas }}</td>
@@ -83,6 +88,11 @@
                             {% if alerta_mecanica.direccion %}
                                 <p class="text-help mb-0">📍 {{ alerta_mecanica.direccion }}</p>
                             {% endif %}
+                            <p class="mb-0 mt-1">
+                                <a href="{{ url_for('mecanico.alertas_detalle', id_alerta=alerta_mecanica.id_alerta) }}">
+                                    Ver detalle
+                                </a>
+                            </p>
                         </div>
                     {% endif %}
                 </td>

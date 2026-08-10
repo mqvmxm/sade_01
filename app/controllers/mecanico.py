@@ -20,6 +20,30 @@ mecanico = Blueprint("mecanico", __name__)
 
 VIAJE_ESTADOS_CON_VEHICULO_EN_USO = ("activo", "alerta", "emergencia")
 
+# Orden/agrupación de vehiculos_lista: "Falla reportada" siempre va primero
+# (ver _clave_orden_vehiculo_mecanico) y no tiene entrada aquí porque no es
+# un Vehiculo.estado real, sino un grupo derivado de tener una Alerta
+# 'asistencia_mecanica' sin atender.
+_ETIQUETA_GRUPO_VEHICULO = {
+    "en_taller": "En taller",
+    "en_ruta": "En ruta",
+    "disponible": "Disponibles",
+}
+_PRIORIDAD_ESTADO_VEHICULO_MECANICO = {"en_taller": 0, "en_ruta": 1, "disponible": 2}
+
+
+def _clave_orden_vehiculo_mecanico(vehiculo, alertas_mecanicas_por_vehiculo):
+    """Orden de vehiculos_lista: "Falla reportada" primero -sin importar el
+    Vehiculo.estado actual, ese grupo se "saca" de su lugar normal-, luego
+    En taller, En ruta, Disponibles; alfabético por placa dentro de cada
+    grupo (ya vienen ordenados así desde la query).
+    """
+    if vehiculo.id_vehiculo in alertas_mecanicas_por_vehiculo:
+        prioridad = -1
+    else:
+        prioridad = _PRIORIDAD_ESTADO_VEHICULO_MECANICO.get(vehiculo.estado, 99)
+    return (prioridad, vehiculo.placas)
+
 
 def mecanico_required(view_func):
     """Exige sesión iniciada y rol mecánico (RF-1.3), igual que hacía dashboard()."""
@@ -102,33 +126,32 @@ def dashboard():
 @mecanico.route("/vehiculos")
 @mecanico_required
 def vehiculos_lista():
-    """Lista todos los vehículos de la flota con su estado actual (RF-5.1)."""
+    """Lista todos los vehículos de la flota agrupados por sección: "Falla
+    reportada" primero, luego En taller, En ruta y Disponibles (RF-5.1).
+    """
     vehiculos = Vehiculo.query.order_by(Vehiculo.placas).all()
 
     viajes_en_uso = Viaje.query.filter(
         Viaje.estado.in_(VIAJE_ESTADOS_CON_VEHICULO_EN_USO)
     ).all()
     vehiculos_con_viaje_activo = {viaje.id_vehiculo for viaje in viajes_en_uso}
-    id_vehiculo_por_viaje = {viaje.id_viaje: viaje.id_vehiculo for viaje in viajes_en_uso}
 
-    # Alertas 'asistencia_mecanica' sin atender de un viaje en curso: el
-    # mecánico debe verlas de inmediato en la lista, sin clics extra (RF-5).
-    # Se cierran solo al completar vehiculos_reportar_averia (ver
-    # _alerta_mecanica_pendiente), no hay una ruta aparte para atenderlas.
+    # Alertas 'asistencia_mecanica' sin atender de TODA la flota, sin
+    # restringir por el estado actual del viaje/vehículo: normalmente el
+    # vehículo seguirá 'en_ruta' mientras la alerta esté pendiente, pero un
+    # viaje cerrado por otra vía sin pasar por vehiculos_reportar_averia
+    # podría dejarla pendiente igual, y el mecánico debe verla de todos
+    # modos (RF-5). Se cierran solo al completar vehiculos_reportar_averia
+    # (ver _alerta_mecanica_pendiente), no hay una ruta aparte para
+    # atenderlas.
+    alertas_mecanicas = (
+        Alerta.query.options(joinedload(Alerta.conductor), joinedload(Alerta.viaje))
+        .filter(Alerta.tipo == "asistencia_mecanica", Alerta.atendida.is_(False))
+        .all()
+    )
     alertas_mecanicas_por_vehiculo = {}
-    if id_vehiculo_por_viaje:
-        alertas = (
-            Alerta.query.options(joinedload(Alerta.conductor))
-            .filter(
-                Alerta.tipo == "asistencia_mecanica",
-                Alerta.atendida.is_(False),
-                Alerta.id_viaje.in_(id_vehiculo_por_viaje.keys()),
-            )
-            .all()
-        )
-        for alerta in alertas:
-            id_vehiculo = id_vehiculo_por_viaje[alerta.id_viaje]
-            alertas_mecanicas_por_vehiculo.setdefault(id_vehiculo, alerta)
+    for alerta in alertas_mecanicas:
+        alertas_mecanicas_por_vehiculo.setdefault(alerta.viaje.id_vehiculo, alerta)
 
     antiguedad_por_alerta = {
         alerta.id_alerta: _tiempo_transcurrido(alerta.generada_en)
@@ -149,6 +172,22 @@ def vehiculos_lista():
     for viaje in viajes_programados:
         reserva_por_vehiculo.setdefault(viaje.id_vehiculo, viaje)
 
+    # Reagrupa: "Falla reportada" se saca de su grupo de estado normal y va
+    # primero, sin importar el Vehiculo.estado actual (ver
+    # _clave_orden_vehiculo_mecanico) -así no aparece duplicado más abajo.
+    vehiculos = sorted(
+        vehiculos,
+        key=lambda v: _clave_orden_vehiculo_mecanico(v, alertas_mecanicas_por_vehiculo),
+    )
+    grupo_vehiculo = {
+        v.id_vehiculo: (
+            "Falla reportada"
+            if v.id_vehiculo in alertas_mecanicas_por_vehiculo
+            else _ETIQUETA_GRUPO_VEHICULO.get(v.estado, "Otro")
+        )
+        for v in vehiculos
+    }
+
     return render_template(
         "mecanico/vehiculos/lista.html",
         vehiculos=vehiculos,
@@ -156,6 +195,7 @@ def vehiculos_lista():
         alertas_mecanicas_por_vehiculo=alertas_mecanicas_por_vehiculo,
         antiguedad_por_alerta=antiguedad_por_alerta,
         reserva_por_vehiculo=reserva_por_vehiculo,
+        grupo_vehiculo=grupo_vehiculo,
     )
 
 
@@ -192,6 +232,30 @@ def alertas_marcar_vista(id_alerta):
 
     flash("Alerta marcada como vista.", "success")
     return redirect(url_for("mecanico.vehiculos_lista"))
+
+
+@mecanico.route("/alertas/<int:id_alerta>/detalle")
+@mecanico_required
+def alertas_detalle(id_alerta):
+    """Detalle de una falla reportada: conductor (con teléfono), vehículo,
+    descripción, antigüedad y ubicación geocodificada si existe (RF-5).
+
+    Mismo criterio de seguridad que alertas_marcar_vista: solo aplica a
+    Alerta tipo='asistencia_mecanica', cualquier otro tipo responde 404.
+    """
+    alerta = Alerta.query.options(
+        joinedload(Alerta.conductor),
+        joinedload(Alerta.viaje).joinedload(Viaje.vehiculo),
+    ).get_or_404(id_alerta)
+    if alerta.tipo != "asistencia_mecanica":
+        abort(404)
+
+    return render_template(
+        "mecanico/alertas/detalle.html",
+        alerta=alerta,
+        vehiculo=alerta.viaje.vehiculo,
+        antiguedad=_tiempo_transcurrido(alerta.generada_en),
+    )
 
 
 @mecanico.route("/vehiculos/<int:id_vehiculo>/estado", methods=["POST"])
