@@ -5,7 +5,15 @@
 {% block active_page %}viajes{% endblock %}
 
 {% block admin_content %}
-<p class="page-title mb-4">Viajes activos</p>
+<div class="d-flex justify-content-between align-items-center mb-4 gap-3">
+    <p class="page-title mb-0">Viajes activos</p>
+    {% if estado_filtro %}
+    <p class="text-help mb-0">
+        Filtrado: {{ 'Operación normal' if estado_filtro == 'activo' else 'Retraso detectado' }}
+        · <a href="{{ url_for('admin.viajes_lista') }}">Ver todos</a>
+    </p>
+    {% endif %}
+</div>
 
 {% if viajes %}
 <div class="row g-3">
@@ -21,7 +29,7 @@
         <div class="d-flex flex-column gap-2">
             {% for viaje in viajes %}
             <a
-                href="{{ url_for('admin.viajes_lista', id_viaje=viaje.id_viaje) }}"
+                href="{{ url_for('admin.viajes_lista', id_viaje=viaje.id_viaje, estado=estado_filtro or None) }}"
                 class="card p-3 text-decoration-none detail-list-item {{ 'active' if viaje_seleccionado and viaje.id_viaje == viaje_seleccionado.id_viaje }}"
             >
                 <div class="d-flex justify-content-between align-items-start">
@@ -127,6 +135,14 @@
     </div>
 </div>
 {% else %}
-<p class="text-muted">No hay viajes activos, en alerta ni en emergencia en este momento.</p>
+<p class="text-muted">
+    {% if estado_filtro == 'activo' %}
+        No hay viajes activos sin incidentes en este momento.
+    {% elif estado_filtro == 'alerta' %}
+        No hay viajes con retraso detectado en este momento.
+    {% else %}
+        No hay viajes activos, en alerta ni en emergencia en este momento.
+    {% endif %}
+</p>
 {% endif %}
 {% endblock %}

@@ -11,9 +11,20 @@
     composicion no es opcional mostrarla (ej. "1 mecánica · 2 de
     tráfico" en el dashboard). Los usos existentes no lo pasan, así que
     default None no les cambia nada.
+
+    href (opcional): si se pasa, la tarjeta se renderiza como <a> a esa URL
+    en vez de <div> (ej. las tarjetas del dashboard, que enlazan a la vista
+    filtrada correspondiente), reutilizando la misma clase .detail-list-item
+    que ya da el look "clicable" (cursor, hover de borde) a las filas de
+    Viajes activos/Alertas -sin CSS nuevo. Sin href, el comportamiento es
+    idéntico al de antes.
 #}
-{% macro stat_card(etiqueta, valor, descripcion, color='neutral', desglose=None) %}
-<div class="card stat-card-{{ color }} h-100">
+{% macro stat_card(etiqueta, valor, descripcion, color='neutral', desglose=None, href=None) %}
+{% set tag = 'a' if href else 'div' %}
+<{{ tag }}
+    {% if href %}href="{{ href }}"{% endif %}
+    class="card stat-card-{{ color }} h-100{{ ' detail-list-item text-decoration-none' if href }}"
+>
     <div class="card-body">
         <p class="stat-card-label mb-1">{{ etiqueta }}</p>
         <p class="stat-card-value mb-1">{{ valor }}</p>
@@ -22,5 +33,5 @@
             <p class="text-help mb-0">{{ desglose }}</p>
         {% endif %}
     </div>
-</div>
+</{{ tag }}>
 {% endmacro %}

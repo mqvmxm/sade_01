@@ -6,7 +6,27 @@
 {% block active_page %}alertas{% endblock %}
 
 {% block admin_content %}
-<p class="page-title mb-4">Alertas</p>
+{% set etiqueta_por_tipo = {
+    'retraso': 'Retraso',
+    'panico': 'Pánico',
+    'licencia_vencida': 'Licencia vencida',
+    'asistencia_mecanica': 'Problema mecánico',
+    'incidencia_trafico': 'Tráfico o retraso',
+    'ruta_no_iniciada': 'Ruta no iniciada',
+} %}
+<div class="d-flex justify-content-between align-items-center mb-4 gap-3">
+    <p class="page-title mb-0">Alertas</p>
+    {% if tipos_filtro %}
+    {% set etiquetas_filtro = [] %}
+    {% for tipo in tipos_filtro %}
+        {% set _ = etiquetas_filtro.append(etiqueta_por_tipo.get(tipo, tipo)) %}
+    {% endfor %}
+    <p class="text-help mb-0">
+        Filtrado: {{ etiquetas_filtro | join(' + ') }}
+        · <a href="{{ url_for('admin.alertas_lista') }}">Ver todas</a>
+    </p>
+    {% endif %}
+</div>
 
 <div class="row g-3 mb-4">
     <div class="col-md-3">
@@ -29,7 +49,7 @@
         <div class="d-flex flex-column gap-2">
             {% for alerta in alertas %}
             <a
-                href="{{ url_for('admin.alertas_lista', id_alerta=alerta.id_alerta) }}"
+                href="{{ url_for('admin.alertas_lista', id_alerta=alerta.id_alerta, tipo=tipos_filtro or None) }}"
                 class="card p-3 text-decoration-none detail-list-item {{ 'active' if alerta_seleccionada and alerta.id_alerta == alerta_seleccionada.id_alerta }}"
             >
                 <div class="d-flex justify-content-between align-items-start">
@@ -178,6 +198,12 @@
     </div>
 </div>
 {% else %}
-<p class="text-muted">No hay alertas pendientes.</p>
+<p class="text-muted">
+    {% if tipos_filtro %}
+        No hay alertas sin atender de ese tipo en este momento.
+    {% else %}
+        No hay alertas pendientes.
+    {% endif %}
+</p>
 {% endif %}
 {% endblock %}

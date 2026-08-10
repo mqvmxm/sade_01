@@ -473,9 +473,10 @@ def _clave_orden_conductor(conductor):
 @admin_required
 def conductores_lista():
     """Lista los conductores con el estado de vigencia de su licencia (RF-2.3),
-    con 4 tarjetas de resumen, un buscador simple por nombre (?buscar=) y un
-    filtro rápido por estado de cuenta (?estado_cuenta=activos|inactivos),
-    combinables entre sí.
+    con 4 tarjetas de resumen, un buscador simple por nombre (?buscar=), un
+    filtro rápido por estado de cuenta (?estado_cuenta=activos|inactivos) y
+    otro por vigencia de licencia (?licencia=vencida, usado por la tarjeta
+    "Licencia vencida" del dashboard), combinables entre sí.
 
     Los conteos se calculan sobre TODOS los conductores (no sobre el
     resultado ya filtrado), para que las tarjetas reflejen siempre el estado
@@ -513,6 +514,10 @@ def conductores_lista():
     elif estado_cuenta == "inactivos":
         conductores = [c for c in conductores if not (c.usuarios and c.usuarios[0].activo)]
 
+    licencia_filtro = request.args.get("licencia", "").strip()
+    if licencia_filtro == "vencida":
+        conductores = [c for c in conductores if not c.licencia_vigente()]
+
     conductores = sorted(conductores, key=_clave_orden_conductor)
     grupo_conductor = {
         conductor.id_conductor: _ETIQUETA_GRUPO_CONDUCTOR[_prioridad_orden_conductor(conductor)]
@@ -532,6 +537,7 @@ def conductores_lista():
         conteos=conteos,
         buscar=buscar,
         estado_cuenta=estado_cuenta,
+        licencia_filtro=licencia_filtro,
         grupo_conductor=grupo_conductor,
         reserva_por_conductor=reserva_por_conductor,
     )
@@ -1211,7 +1217,7 @@ def vehiculos_editar(id_vehiculo):
     )
 
 
-def _viajes_en_curso():
+def _viajes_en_curso(estados=("activo", "alerta", "emergencia")):
     """Viajes 'activo', 'alerta' o 'emergencia' para monitoreo del administrador
     (RF-3/RF-4). Compartida por viajes_lista() (vista de gestión completa) y
     dashboard() (resumen 'Viajes en curso'), para que ambas pantallas
@@ -1220,6 +1226,13 @@ def _viajes_en_curso():
     Las emergencias reales van siempre primero, sin importar su hora_salida:
     son lo más urgente y no deben poder quedar enterradas debajo de simples
     retrasos o viajes normales más recientes.
+
+    estados (opcional): subconjunto de los tres a incluir -usado por
+    viajes_lista para el filtro ?estado= que enlazan las tarjetas del
+    dashboard ("Operación normal"/"Retraso detectado", ver ahí-. Por
+    default incluye los tres, igual que antes; dashboard() sigue llamando
+    esta función sin argumentos, así que su resumen "Viajes en curso" no
+    cambia.
     """
     prioridad_estado = case(
         (Viaje.estado == "emergencia", 0),
@@ -1227,7 +1240,7 @@ def _viajes_en_curso():
         else_=2,
     )
     return (
-        Viaje.query.filter(Viaje.estado.in_(["activo", "alerta", "emergencia"]))
+        Viaje.query.filter(Viaje.estado.in_(estados))
         .order_by(prioridad_estado, Viaje.hora_salida)
         .all()
     )
@@ -1279,14 +1292,28 @@ def _detalle_viaje(viaje):
     return {"ahora": ahora, "retraso_minutos": retraso_minutos, "eventos": eventos}
 
 
+_ESTADOS_FILTRABLES_VIAJES_LISTA = {"activo": ("activo",), "alerta": ("alerta",)}
+
+
 @admin.route("/viajes")
 @admin_required
 def viajes_lista():
     """Vista de dos columnas: lista de viajes en curso a la izquierda y el
     detalle del seleccionado a la derecha (?id_viaje=<id>; si falta o no
     corresponde a un viaje en curso, se usa el primero de la lista, RF-3).
+
+    ?estado=activo|alerta (opcional) reduce la lista a un solo estado -usado
+    por las tarjetas "Operación normal"/"Retraso detectado" del dashboard,
+    ver ahí-; cualquier otro valor (incluida su ausencia) conserva el
+    comportamiento default: los tres estados en curso mezclados.
     """
-    viajes = _viajes_en_curso()
+    estado_filtro = request.args.get("estado", "")
+    estados = _ESTADOS_FILTRABLES_VIAJES_LISTA.get(
+        estado_filtro, ("activo", "alerta", "emergencia")
+    )
+    if estado_filtro not in _ESTADOS_FILTRABLES_VIAJES_LISTA:
+        estado_filtro = ""
+    viajes = _viajes_en_curso(estados=estados)
 
     id_viaje_param = request.args.get("id_viaje", type=int)
     viaje_seleccionado = None
@@ -1304,6 +1331,7 @@ def viajes_lista():
         viajes=viajes,
         viaje_seleccionado=viaje_seleccionado,
         detalle=detalle,
+        estado_filtro=estado_filtro,
     )
 
 
@@ -1788,6 +1816,16 @@ def _detalle_alerta(alerta):
     return {"emergencia": emergencia}
 
 
+_TIPOS_ALERTA_VALIDOS = (
+    "retraso",
+    "panico",
+    "licencia_vencida",
+    "asistencia_mecanica",
+    "incidencia_trafico",
+    "ruta_no_iniciada",
+)
+
+
 @admin.route("/alertas")
 @admin_required
 def alertas_lista():
@@ -1795,13 +1833,22 @@ def alertas_lista():
     igual que antes) y el detalle de la seleccionada a la derecha
     (?id_alerta=<id>; si falta o no corresponde a una alerta sin atender, se
     usa la primera de la lista), más 4 tarjetas de resumen.
+
+    ?tipo=<tipo> (repetible, ej. ?tipo=asistencia_mecanica&tipo=incidencia_trafico)
+    reduce la lista a uno o más tipos -usado por la tarjeta "Emergencias" del
+    dashboard, que agrupa mecánica + tráfico-; sin el parámetro (o con
+    valores que no correspondan a ningún tipo válido) se conserva el
+    comportamiento default: todas las alertas sin atender.
     """
-    alertas = (
+    tipos_filtro = [t for t in request.args.getlist("tipo") if t in _TIPOS_ALERTA_VALIDOS]
+
+    query_alertas = (
         Alerta.query.options(joinedload(Alerta.conductor), joinedload(Alerta.viaje))
         .filter_by(atendida=False)
-        .order_by(Alerta.generada_en.desc())
-        .all()
     )
+    if tipos_filtro:
+        query_alertas = query_alertas.filter(Alerta.tipo.in_(tipos_filtro))
+    alertas = query_alertas.order_by(Alerta.generada_en.desc()).all()
 
     id_alerta_param = request.args.get("id_alerta", type=int)
     alerta_seleccionada = None
@@ -1835,6 +1882,7 @@ def alertas_lista():
         alerta_seleccionada=alerta_seleccionada,
         detalle=detalle,
         conteos=conteos,
+        tipos_filtro=tipos_filtro,
     )
 
 

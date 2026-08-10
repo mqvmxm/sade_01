@@ -67,10 +67,22 @@
 
 <div class="row g-3 mb-4">
     <div class="col-md-3">
-        {{ stat_card('Operación normal', conteos.activo, 'Viajes activos sin incidentes', 'success') }}
+        {{ stat_card(
+            'Operación normal',
+            conteos.activo,
+            'Viajes activos sin incidentes',
+            'success',
+            href=url_for('admin.viajes_lista', estado='activo')
+        ) }}
     </div>
     <div class="col-md-3">
-        {{ stat_card('Retraso detectado', conteos.alerta, 'Viajes que superaron su ETA', 'warning') }}
+        {{ stat_card(
+            'Retraso detectado',
+            conteos.alerta,
+            'Viajes que superaron su ETA',
+            'warning',
+            href=url_for('admin.viajes_lista', estado='alerta')
+        ) }}
     </div>
     <div class="col-md-3">
         {{ stat_card(
@@ -78,11 +90,18 @@
             conteos.emergencia_mecanica + conteos.emergencia_trafico,
             'Fallas mecánicas y reportes de tráfico sin atender',
             'danger',
-            desglose=desglose_emergencia
+            desglose=desglose_emergencia,
+            href=url_for('admin.alertas_lista', tipo=['asistencia_mecanica', 'incidencia_trafico'])
         ) }}
     </div>
     <div class="col-md-3">
-        {{ stat_card('Licencia vencida', conteos.licencia_vencida, 'Conductores con licencia expirada', 'neutral') }}
+        {{ stat_card(
+            'Licencia vencida',
+            conteos.licencia_vencida,
+            'Conductores con licencia expirada',
+            'neutral',
+            href=url_for('admin.conductores_lista', licencia='vencida')
+        ) }}
     </div>
 </div>
 
