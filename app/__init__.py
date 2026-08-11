@@ -129,13 +129,15 @@ def _iniciar_scheduler(app):
 
 
 def _registrar_cli(app):
-    """Registra los comandos de terminal de la app (RF-1.1, alta de admin).
+    """Registra los comandos de terminal de la app (RF-1.1, alta y
+    recuperación de admin).
 
-    El alta de administrador es deliberadamente un comando de Flask CLI y
-    NUNCA una ruta HTTP: es el rol más sensible del sistema (admin puede dar
-    de alta cualquier otra cuenta), así que no debe existir ninguna
-    superficie de ataque en el navegador para crearlo. Solo quien tiene
-    acceso a la terminal del servidor puede correr `flask crear-admin`.
+    El alta y el reseteo de contraseña de administrador son deliberadamente
+    comandos de Flask CLI y NUNCA rutas HTTP: es el rol más sensible del
+    sistema (admin puede dar de alta cualquier otra cuenta), así que no debe
+    existir ninguna superficie de ataque en el navegador para tocarlos. Solo
+    quien tiene acceso a la terminal del servidor puede correr
+    `flask crear-admin` o `flask resetear-contrasena-admin`.
     """
 
     @app.cli.command("crear-admin")
@@ -200,3 +202,57 @@ def _registrar_cli(app):
         db.session.commit()
 
         click.echo(f"Administrador creado correctamente: {usuario.nombre_usuario}")
+
+    @app.cli.command("resetear-contrasena-admin")
+    def resetear_contrasena_admin():
+        """Resetea la contraseña de una cuenta de admin existente, sin pedir
+        la anterior (mismo patrón de seguridad que crear-admin: comando de
+        terminal, NUNCA una ruta HTTP -así un admin que pierde acceso a su
+        correo Y a su contraseña al mismo tiempo no queda sin forma de
+        recuperar su cuenta, sin abrir una superficie de ataque en el
+        navegador para hacerlo).
+        """
+        from app.models.bitacora import Bitacora
+        from app.models.usuario import Usuario
+
+        nombre_usuario = click.prompt("Nombre de usuario").strip()
+        usuario = Usuario.query.filter_by(
+            nombre_usuario=nombre_usuario, rol="admin"
+        ).first()
+        if usuario is None:
+            click.echo(
+                f"No existe una cuenta de administrador con el nombre de usuario "
+                f"'{nombre_usuario}'. No se cambió nada."
+            )
+            return
+
+        nueva_contrasena = click.prompt(
+            "Nueva contraseña", hide_input=True, confirmation_prompt=True
+        )
+        while len(nueva_contrasena) < 8:
+            click.echo("La contraseña debe tener al menos 8 caracteres.")
+            nueva_contrasena = click.prompt(
+                "Nueva contraseña", hide_input=True, confirmation_prompt=True
+            )
+
+        usuario.set_password(nueva_contrasena)
+        db.session.commit()
+
+        # Mismo criterio que crear-admin: no hay current_user real en un
+        # comando CLI (no hay request ni sesión), así que se registra al
+        # propio admin afectado como autor del cambio.
+        bitacora = Bitacora(
+            id_usuario=usuario.id_usuario,
+            accion="reset_contrasena_admin_cli",
+            descripcion=(
+                f"Contraseña reseteada para la cuenta de administrador "
+                f"'{usuario.nombre}' (usuario '{usuario.nombre_usuario}') vía "
+                f"flask resetear-contrasena-admin."
+            ),
+            tabla_afectada="usuarios",
+            registro_id=usuario.id_usuario,
+        )
+        db.session.add(bitacora)
+        db.session.commit()
+
+        click.echo(f"Contraseña actualizada correctamente para '{usuario.nombre_usuario}'.")
