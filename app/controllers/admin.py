@@ -1461,13 +1461,20 @@ def viajes_cerrar_forzado(id_viaje):
 
 
 def _conductores_disponibles_para_programar(excluir_viaje_id=None):
-    """Conductores activos con licencia vigente y sin una ruta sin cerrar,
-    aptos para que el admin les asigne una ruta nueva (RF-3). Un conductor
-    con licencia vencida no debe ni aparecer en el selector -RF-6.2 se
-    refuerza aquí, además de al iniciar el viaje (ver
+    """Conductores con cuenta de acceso activa, licencia vigente y sin una
+    ruta sin cerrar, aptos para que el admin les asigne una ruta nueva
+    (RF-3). Un conductor con licencia vencida no debe ni aparecer en el
+    selector -RF-6.2 se refuerza aquí, además de al iniciar el viaje (ver
     conductor.viajes_iniciar). El filtro de "sin ruta sin cerrar" replica el
     mismo criterio que el conflicto validado al guardar en viajes_programar,
     para que el admin no se entere del choque hasta el POST.
+
+    El filtro de disponibilidad usa Usuario.activo (el estado de la cuenta),
+    no Conductor.activo: son columnas distintas y cuentas_cambiar_estado
+    (desactivar cuenta desde el admin) solo toca la primera. Es el mismo
+    criterio que conductores_lista ya usa para mostrar "Activa"/"Inactiva",
+    así que un conductor con la cuenta desactivada no debe seguir
+    apareciendo aquí aunque Conductor.activo no se haya tocado.
 
     excluir_viaje_id (opcional): ignora esa ruta puntual al revisar viajes
     sin cerrar. Usado por viajes_editar_programada (auto-exclusión, RF-3):
@@ -1483,7 +1490,8 @@ def _conductores_disponibles_para_programar(excluir_viaje_id=None):
 
     return [
         c
-        for c in Conductor.query.filter_by(activo=True)
+        for c in Conductor.query.join(Usuario, Usuario.id_conductor == Conductor.id_conductor)
+        .filter(Usuario.activo.is_(True))
         .filter(~Conductor.id_conductor.in_(ids_con_viaje_sin_cerrar))
         .order_by(Conductor.nombre)
         .all()
@@ -1551,7 +1559,7 @@ def viajes_programar():
         }
 
         conductor = Conductor.query.get(request.form.get("id_conductor", type=int))
-        if conductor is None or not conductor.activo or not conductor.licencia_vigente():
+        if conductor is None or not conductor.cuenta_activa() or not conductor.licencia_vigente():
             flash("Selecciona un conductor activo con licencia vigente.", "error")
             return render_template("admin/viajes/programar.html", **contexto_formulario)
 
@@ -1565,6 +1573,18 @@ def viajes_programar():
         )
         if error:
             flash(error, "error")
+            return render_template("admin/viajes/programar.html", **contexto_formulario)
+
+        # No basta con que la licencia esté vigente hoy (ya validado arriba):
+        # una ruta programada con días de anticipación puede tener una ETA
+        # posterior a la fecha de vencimiento de la licencia, y el conductor
+        # llegaría a su destino ya sin licencia vigente (RF-6.2 extendido a
+        # la ETA, no solo a "hoy").
+        if not conductor.licencia_vigente_en(eta.date()):
+            flash(
+                "La licencia del conductor seleccionado vence antes de la ETA de esta ruta.",
+                "error",
+            )
             return render_template("admin/viajes/programar.html", **contexto_formulario)
 
         # Mismo espíritu que RF-3.6: ni el conductor ni el vehículo pueden
@@ -1759,7 +1779,7 @@ def viajes_editar_programada(id_viaje):
         }
 
         conductor = Conductor.query.get(request.form.get("id_conductor", type=int))
-        if conductor is None or not conductor.activo or not conductor.licencia_vigente():
+        if conductor is None or not conductor.cuenta_activa() or not conductor.licencia_vigente():
             flash("Selecciona un conductor activo con licencia vigente.", "error")
             return render_template("admin/viajes/editar_programada.html", **contexto_formulario)
 
@@ -1778,6 +1798,15 @@ def viajes_editar_programada(id_viaje):
         )
         if error:
             flash(error, "error")
+            return render_template("admin/viajes/editar_programada.html", **contexto_formulario)
+
+        # Mismo motivo que en viajes_programar: la ETA editada puede caer
+        # después del vencimiento de la licencia aunque siga vigente hoy.
+        if not conductor.licencia_vigente_en(eta.date()):
+            flash(
+                "La licencia del conductor seleccionado vence antes de la ETA de esta ruta.",
+                "error",
+            )
             return render_template("admin/viajes/editar_programada.html", **contexto_formulario)
 
         # Mismo criterio que viajes_programar, excluyendo esta misma ruta:

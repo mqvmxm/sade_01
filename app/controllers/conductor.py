@@ -158,8 +158,18 @@ def viajes_iniciar(id_viaje):
         )
         return redirect(url_for("conductor.dashboard"))
 
-    if not perfil.licencia_vigente():
-        flash("No puedes iniciar un viaje: tu licencia está vencida.", "error")
+    # licencia_vigente_en(viaje.eta.date()) en vez de licencia_vigente(): no
+    # basta con que la licencia esté vigente ahora mismo -viaje.eta ya se
+    # validó arriba como futura-, también debe seguir vigente en la ETA de
+    # esta ruta específica (RF-6.2 extendido a la ETA, no solo a "hoy"; ver
+    # admin.viajes_programar/viajes_editar_programada, que aplican el mismo
+    # criterio al programar/editar). Como viaje.eta > datetime.now() en este
+    # punto, esta validación ya implica la vigencia "de hoy".
+    if not perfil.licencia_vigente_en(viaje.eta.date()):
+        flash(
+            "No puedes iniciar este viaje: tu licencia vence antes de la ETA de esta ruta.",
+            "error",
+        )
         return redirect(url_for("conductor.dashboard"))
 
     # Un conductor no puede tener dos viajes sin cerrar a la vez (mismo

@@ -28,10 +28,35 @@ class Conductor(db.Model):
         Usado para bloquear el check-in de viajes cuando la licencia está
         vencida (RF-6.2).
         """
-        return self.fecha_vencimiento_lic >= date.today()
+        return self.licencia_vigente_en(date.today())
+
+    def licencia_vigente_en(self, fecha):
+        """Compara la fecha de vencimiento de la licencia contra una fecha
+        arbitraria en vez de "hoy" (RF-6.1/RF-6.2). Usado para validar que la
+        licencia siga vigente en la ETA específica de una ruta -no basta con
+        que esté vigente al momento de programarla o iniciarla, porque una
+        ruta puede tener una ETA días después de hoy y la licencia vencer en
+        medio camino. Acepta date o datetime; un datetime se normaliza a su
+        fecha porque fecha_vencimiento_lic es un Date.
+        """
+        if isinstance(fecha, datetime):
+            fecha = fecha.date()
+        return self.fecha_vencimiento_lic >= fecha
 
     def licencia_proxima_a_vencer(self, dias=30):
         """Indica si la licencia sigue vigente pero vence dentro de los próximos `dias` días."""
         if not self.licencia_vigente():
             return False
         return (self.fecha_vencimiento_lic - date.today()).days <= dias
+
+    def cuenta_activa(self):
+        """Indica si la cuenta de acceso (Usuario) vinculada está activa.
+
+        Fuente de verdad para "¿este conductor puede operar?" en todo lo que
+        toca la asignación de rutas -Conductor.activo es una columna
+        distinta que cuentas_cambiar_estado nunca toca al desactivar una
+        cuenta desde el admin (ver admin.cuentas_cambiar_estado), así que no
+        sirve para esto. Un conductor sin cuenta vinculada no cuenta como
+        activo.
+        """
+        return bool(self.usuarios) and self.usuarios[0].activo
