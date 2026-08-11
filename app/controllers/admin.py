@@ -158,6 +158,30 @@ def _guardar_email_cuenta(conductor, email):
     db.session.commit()
 
 
+def _guardar_contrasena_cuenta(conductor, nueva_contrasena):
+    """Actualiza la contraseña de la cuenta Usuario ligada a este conductor
+    (mismo caso de uso que mecanicos_editar: única vía para ayudar a un
+    conductor sin correo registrado que olvidó su contraseña).
+
+    Mismo criterio que _guardar_email_cuenta: si el conductor todavía no
+    tiene cuenta vinculada, no hay dónde guardarla y se avisa al admin en
+    vez de perderla en silencio. Retorna True si sí se guardó, para que el
+    llamador pueda reflejarlo en la Bitácora.
+    """
+    usuario = Usuario.query.filter_by(id_conductor=conductor.id_conductor).first()
+    if usuario is None:
+        flash(
+            "La contraseña no se guardó: este conductor todavía no tiene una cuenta "
+            "de usuario vinculada. Vuelve a editarlo una vez que se le cree la cuenta.",
+            "warning",
+        )
+        return False
+
+    usuario.set_password(nueva_contrasena)
+    db.session.commit()
+    return True
+
+
 def _datos_cuenta_nueva_desde_formulario():
     """Lee y valida los campos de la cuenta de acceso en el alta de conductor
     (RF-1.1): nombre de usuario, contraseña temporal y correo. Los tres son
@@ -633,6 +657,19 @@ def conductores_editar(id_conductor):
                 id_conductor=id_conductor,
             )
 
+        # La nueva contraseña es opcional: un conductor sin correo registrado
+        # no puede usar "olvidé mi contraseña", así que esta es la única vía
+        # para ayudarlo si la olvida (mismo patrón que mecanicos_editar).
+        # Vacío = no se toca la actual.
+        nueva_contrasena = request.form.get("nueva_contrasena", "")
+        if nueva_contrasena and len(nueva_contrasena) < 8:
+            flash("La nueva contraseña debe tener al menos 8 caracteres.", "error")
+            return render_template(
+                "admin/conductores/formulario.html",
+                conductor=request.form,
+                id_conductor=id_conductor,
+            )
+
         for campo, valor in datos.items():
             setattr(conductor, campo, valor)
 
@@ -651,6 +688,23 @@ def conductores_editar(id_conductor):
             )
 
         _guardar_email_cuenta(conductor, request.form.get("email", "").strip())
+
+        contrasena_cambiada = False
+        if nueva_contrasena:
+            contrasena_cambiada = _guardar_contrasena_cuenta(conductor, nueva_contrasena)
+
+        bitacora = Bitacora(
+            id_usuario=current_user.id_usuario,
+            accion="edicion_conductor",
+            descripcion=(
+                f"Conductor '{conductor.nombre}' editado por {current_user.nombre}"
+                + (" (incluye cambio de contraseña)." if contrasena_cambiada else ".")
+            ),
+            tabla_afectada="conductores",
+            registro_id=conductor.id_conductor,
+        )
+        db.session.add(bitacora)
+        db.session.commit()
 
         flash(f"Conductor '{conductor.nombre}' actualizado correctamente.", "success")
         return redirect(url_for("admin.conductores_lista"))

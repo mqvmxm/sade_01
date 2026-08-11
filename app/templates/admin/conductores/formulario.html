@@ -66,6 +66,21 @@
                     "¿Olvidaste tu contraseña?".
                 </div>
             </div>
+            {% else %}
+            <div class="mb-3">
+                <label for="nueva_contrasena" class="form-label">Nueva contraseña (dejar vacío para no cambiarla)</label>
+                <input
+                    type="password"
+                    class="form-control"
+                    id="nueva_contrasena"
+                    name="nueva_contrasena"
+                    minlength="8"
+                >
+                <div class="text-help mt-1">
+                    Mínimo 8 caracteres si se llena. Útil cuando el conductor no tiene correo
+                    registrado y no puede usar "¿Olvidaste tu contraseña?".
+                </div>
+            </div>
             {% endif %}
             <div class="mb-3">
                 <label for="email" class="form-label">Correo electrónico (cuenta de acceso)</label>
