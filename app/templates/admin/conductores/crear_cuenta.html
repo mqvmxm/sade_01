@@ -7,13 +7,15 @@
 {% block active_page %}conductores{% endblock %}
 
 {% block admin_content %}
-<p class="page-title mb-4">Crear cuenta de acceso</p>
+
+# sirve para que el conductor pueda iniciar sesión en la app web y ver sus rutas asignadas.
+<p class="page-title mb-4">Crear cuenta de acceso</p> 
 <p class="text-help mb-4">
     Para el conductor <strong>{{ conductor.nombre }}</strong> (licencia {{ conductor.num_licencia }}),
     que todavía no tiene una cuenta de usuario vinculada.
 </p>
 
-<div class="row g-4">
+<div class="row g-4"> 
     <div class="col-lg-8">
         <form method="POST" action="{{ url_for('admin.conductores_crear_cuenta', id_conductor=conductor.id_conductor) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -39,7 +41,7 @@
                     minlength="8"
                     required
                 >
-                <div class="text-help mt-1">
+                <div class="text-help mt-1"> 
                     Mínimo 8 caracteres. El conductor podrá cambiarla después con
                     "¿Olvidaste tu contraseña?".
                 </div>
@@ -60,9 +62,11 @@
                 </div>
             </div>
 
+             # Es el botón para crear la cuenta de acceso del conductor
             <div class="d-flex gap-2">
                 <button type="submit" class="btn btn-primary">Crear cuenta</button>
-                <a href="{{ url_for('admin.conductores_lista') }}" class="btn btn-outline-secondary">
+                # Sirve para volver a la lista de conductores sin crear la cuenta
+                <a href="{{ url_for('admin.conductores_lista') }}" class="btn btn-outline-secondary"> 
                     Cancelar
                 </a>
             </div>
