@@ -10,11 +10,14 @@
 {% block admin_content %}
 <p class="page-title mb-4">{{ 'Editar conductor' if es_edicion else 'Nuevo conductor' }}</p>
 
-<div class="row g-4">
+# Se crea un formulario para registrar o editar la información de un conductor, incluyendo datos de contacto, licencia y cuenta de acceso.
+<div class="row g-4"> 
     <div class="col-lg-8">
         <form
-            method="POST"
-            action="{{ url_for('admin.conductores_editar', id_conductor=id_conductor) if es_edicion else url_for('admin.conductores_nuevo') }}"
+        # Es el metodo que se usa para enviar los datos del formulario al servidor
+            method="POST" 
+            # Se define la acción del formulario, que depende de si se está editando o creando un conductor
+            action="{{ url_for('admin.conductores_editar', id_conductor=id_conductor) if es_edicion else url_for('admin.conductores_nuevo') }}" 
         >
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-3">
