@@ -11,9 +11,11 @@
 # del conductor-, así que obtener_direccion() nunca lanza, solo devuelve
 # None.
 
-import requests
+# Esta accion requiere la librería requests, que no es parte de Python, instalar con pip install requests.
+import requests 
 
-_NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse"
+# Sirve para geocodificación inversa (coordenadas = dirección legible)
+_NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse" 
 _USER_AGENT = "SADE-ProyectoIntegrador/1.0"
 _TIMEOUT_SEGUNDOS = 5
 
@@ -31,7 +33,8 @@ def obtener_direccion(latitud, longitud):
     if latitud is None or longitud is None:
         return None
 
-    try:
+# esto maneja errores de conexión y respuesta, devolviendo None en caso de fallo
+    try: 
         respuesta = requests.get(
             _NOMINATIM_URL,
             params={"lat": latitud, "lon": longitud, "format": "json"},
@@ -43,7 +46,8 @@ def obtener_direccion(latitud, longitud):
     except (requests.RequestException, ValueError):
         return None
 
-    if not isinstance(datos, dict):
+# respuesta json puede devolver una lista vacía si no hay resultados, o un error si hubo un problema en ambos casos no hay dirección que devolver
+    if not isinstance(datos, dict):    
         return None
 
     return datos.get("display_name") or None
