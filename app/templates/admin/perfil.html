@@ -1,9 +1,13 @@
-{% extends 'admin/_layout.html' %}
+# es la plantilla base para las páginas del panel de administración, que define la estructura general y los estilos de la interfaz de usuario.
+{% extends 'admin/_layout.html' %} 
 
-{% block title %}Mi perfil — S.A.D.E.{% endblock %}
+# define el título de la página, que se muestra en la pestaña del navegador y en la barra de título del panel de administración.
+{% block title %}Mi perfil — S.A.D.E.{% endblock %} 
 
-{% block active_page %}perfil{% endblock %}
+# define la página activa en el menú de navegación del panel de administración, para resaltar la sección correspondiente al perfil del usuario.
+{% block active_page %}perfil{% endblock %} 
 
+#define el contenido principal de la página del perfil del usuario, que incluye la información personal y las opciones de configuración.
 {% block admin_content %}
 {% include '_perfil_body.html' %}
 {% endblock %}
