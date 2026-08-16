@@ -1,12 +1,16 @@
 # Blueprint de autenticación: login, logout, redirección a la raíz y
 # recuperación de contraseña por correo (RF-1: Autenticación y accesos).
 
-from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+# Realiza la serialización y deserialización de datos de manera segura, con firma y expiración de tokens
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer 
 
-from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
-from flask_login import current_user, login_required, login_user, logout_user
+# Genera URLs para rutas de la aplicación y redirige a ellas
+from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for 
+# Sirve para manejar la sesión de usuario y proteger rutas que requieren autenticación
+from flask_login import current_user, login_required, login_user, logout_user 
 
-from app import db
+# Importa la instancia de la base de datos SQLAlchemy para interactuar con la base de datos
+from app import db 
 from app.models.bitacora import Bitacora
 from app.models.usuario import Usuario
 from app.services.correo import enviar_correo
