@@ -1,12 +1,17 @@
 # Blueprint del rol administrador (RF-1.4: el admin gestiona cuentas).
 # Incluye el módulo de gestión de conductores (RF-2: Gestión de flota).
+# Es para exportar los datos de los conductores y vehículos a un archivo CSV
+# Es para importar y exportar archivos en memoria, como el CSV que se genera para descargar los datos de los conductores y vehículos
+# Módulo para normalizar cadenas de texto, útil para búsquedas insensibles a acentos y mayúsculas/minúsculas
+# Herramienta para trabajar con fechas y horas
+# Nos sirve para crear decoradores de funciones, como admin_required
 
-import csv
-import io
+import csv 
+import io 
 import math
-import unicodedata
-from datetime import date, datetime, timedelta
-from functools import wraps
+import unicodedata 
+from datetime import date, datetime, timedelta 
+from functools import wraps 
 
 from flask import Blueprint, Response, abort, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
