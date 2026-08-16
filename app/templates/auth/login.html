@@ -13,7 +13,8 @@
         display: flex;
     }
 
-    .login-panel-brand {
+    # es el panel lateral izquierdo que contiene el logotipo, el título y las características del sistema
+    .login-panel-brand {  
         position: relative;
         overflow: hidden;
         background-color: var(--color-panel-dark);
@@ -25,23 +26,26 @@
         padding: 4rem;
     }
 
-    .login-panel-decor {
+    # son los elementos decorativos que se muestran en el panel lateral izquierdo, con formas circulares y colores semitransparentes
+    .login-panel-decor { 
         position: absolute;
         border-radius: 50%;
         background-color: rgba(255, 255, 255, 0.035);
         pointer-events: none;
     }
 
-    .login-panel-decor.c1 { width: 320px; height: 320px; top: -120px; right: -100px; }
+    .login-panel-decor.c1 { width: 320px; height: 320px; top: -120px; right: -100px; } 
     .login-panel-decor.c2 { width: 220px; height: 220px; bottom: -80px; left: -70px; }
     .login-panel-decor.c3 { width: 140px; height: 140px; bottom: 30px; right: 30px; }
 
-    .login-panel-content {
+    # es el contenedor del contenido principal del panel lateral izquierdo, que incluye el título, el subtítulo y la lista de características
+    .login-panel-content { 
         position: relative;
         z-index: 1;
     }
 
-    .login-panel-brand h1 {
+    # es el título principal del panel lateral izquierdo, que muestra el nombre del sistema
+    .login-panel-brand h1 { 
         color: #fff;
         font-size: 48px;
         font-weight: 700;
@@ -49,7 +53,8 @@
         margin-bottom: 0.75rem;
     }
 
-    .login-panel-subtitle {
+    # es el subtítulo del panel lateral izquierdo, que describe brevemente el propósito del sistema
+    .login-panel-subtitle { 
         color: #9BA0AA;
         font-size: 14px;
         line-height: 1.5;
@@ -57,7 +62,8 @@
         margin-bottom: 0;
     }
 
-    .login-panel-divider {
+    # es una línea horizontal que separa el contenido del panel lateral izquierdo de la lista de características
+    .login-panel-divider { 
         width: 48px;
         height: 3px;
         background-color: var(--color-success);
@@ -65,7 +71,8 @@
         margin: 1.75rem 0;
     }
 
-    .login-panel-features {
+    # es la lista de características del sistema que se muestran en el panel lateral izquierdo
+    .login-panel-features { 
         list-style: none;
         padding: 0;
         margin: 0;
@@ -74,23 +81,26 @@
         gap: 1.25rem;
     }
 
-    .login-panel-features li {
+    # es cada elemento de la lista de características, que contiene un título y una descripción
+    .login-panel-features li { 
         border-left: 3px solid var(--color-success);
         padding-left: 1rem;
     }
 
+     # es el título de cada característica, que se muestra en negrita y con un tamaño de fuente mayor
     .login-panel-feature-title {
         font-weight: 700;
         font-size: 13px;
         color: #fff;
     }
 
-    .login-panel-feature-desc {
+    # es la descripción de cada característica, que se muestra en un tamaño de fuente menor y con un color más claro
+    .login-panel-feature-desc { 
         font-size: 11.5px;
         color: #9BA0AA;
     }
-
-    .login-panel-form {
+    # es el panel lateral derecho que contiene el formulario de inicio de sesión, con un fondo claro y un diseño centrado
+    .login-panel-form { 
         flex: 1 1 55%;
         display: flex;
         align-items: center;
@@ -99,11 +109,13 @@
         padding: 2rem;
     }
 
-    .login-card {
+    # es la tarjeta que contiene el formulario de inicio de sesión, con un fondo blanco, bordes redondeados y sombra
+    .login-card { 
         width: 100%;
         max-width: 22rem;
     }
 
+    # es la línea que separa el formulario de inicio de sesión de los enlaces de ayuda
     .login-divider {
         border-top: 1px solid var(--color-card-border);
         opacity: 1;
