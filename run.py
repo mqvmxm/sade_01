@@ -11,5 +11,5 @@ with app.app_context():
     print("Base de datos creada correctamente")
 
 if __name__ == "__main__":
-    print("S.A.D.E. iniciando en http://0.0.0.0:5000")
+    print("S.A.D.E. iniciando en http://0.0.0.0:5000") 
     app.run(host="0.0.0.0", port=5000, debug=True)

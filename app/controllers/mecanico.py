@@ -1,20 +1,31 @@
 # Blueprint del rol mecánico: gestión de estado vehicular y reportes de
 # avería (RF-5: Estado vehicular).
 
-from datetime import datetime
-from functools import wraps
+# Es para el cálculo de antigüedad de alertas y para marcar hora_llegada de viajes cerrados por reporte de avería.
+from datetime import datetime 
+# Es para el decorador @mecanico_required, que exige sesión iniciada y rol mecánico.
+from functools import wraps 
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
-from flask_login import current_user, login_required
-from sqlalchemy.orm import joinedload
+# Sirve como punto de entrada para el rol mecánico, y para redirigir a login si no hay sesión activa.
+from flask import Blueprint, abort, flash, redirect, render_template, request, url_for 
+# Es para el decorador @login_required y para obtener current_user (usuario en sesión).
+from flask_login import current_user, login_required 
+#Sirve para optimizar queries con relaciones, evitando N+1 queries.
+from sqlalchemy.orm import joinedload 
 
 from app import db
-from app.models.alerta import Alerta
-from app.models.bitacora import Bitacora
-from app.controllers.perfil import procesar_perfil
-from app.models.reporte_averia import ReporteAveria
+# Son para las alertas de asistencia mecánica que el mecánico ve en su dashboard y puede marcar como vistas o atendidas.
+from app.models.alerta import Alerta 
+# Es para registrar en la bitácora las acciones del mecánico (cambio de estado de vehículo, reporte de avería, etc.).
+from app.models.bitacora import Bitacora 
+#Sirve como función compartida para procesar la edición de perfil del mecánico (correo, teléfono, contraseña).
+from app.controllers.perfil import procesar_perfil 
+# Ayuda a registrar los reportes de avería que el mecánico crea para vehículos con viajes activos.
+from app.models.reporte_averia import ReporteAveria 
+#Funciona para listar vehículos, cambiar su estado y vincularlos a reportes de avería.
 from app.models.vehiculo import Vehiculo
-from app.models.viaje import Viaje
+# Funciona para determinar si un vehículo tiene un viaje activo, y para asociar reportes de avería a ese viaje. 
+from app.models.viaje import Viaje 
 
 mecanico = Blueprint("mecanico", __name__)
 
@@ -213,7 +224,8 @@ def alertas_marcar_vista(id_alerta):
     if alerta.tipo != "asistencia_mecanica":
         abort(404)
 
-    if not alerta.vista:
+# Funciona como un "marcar como vista" idempotente: si ya estaba marcada, no hace nada.
+    if not alerta.vista: 
         alerta.vista = True
         alerta.vista_en = datetime.now()
 
